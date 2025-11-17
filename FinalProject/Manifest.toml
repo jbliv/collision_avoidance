@@ -2,7 +2,7 @@
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "a5177cfcc3254b12913c488276590b2ed9e16389"
+project_hash = "e38e11ce49be2b51da43bf399ab4b2400e4df5a4"
 
 [[deps.ASL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -445,6 +445,12 @@ version = "2.6.1"
 
     [deps.SpecialFunctions.weakdeps]
     ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+
+[[deps.SqpSolver]]
+deps = ["JuMP", "LinearAlgebra", "Logging", "MathOptInterface", "Printf", "SparseArrays"]
+git-tree-sha1 = "7f1b99029b30c0498fd715a8bde8defd2f4e1893"
+uuid = "ffdd34ce-459d-4fc7-82a1-202b2ab8becf"
+version = "0.1.0"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "PrecompileTools", "Random", "StaticArraysCore"]

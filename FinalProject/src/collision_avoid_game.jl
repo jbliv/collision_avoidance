@@ -6,6 +6,7 @@
 # ] activate .
 # import Pkg
 # Pkg.instantiate()
+# using Revise
 # using FinalProject
 # FinalProject.run()
 
@@ -13,18 +14,23 @@ using FinalProject
 
 function run()
 
-    # set up model
-    model = Model(Ipopt.Optimizer)
+    # set up model to use SQP solver
+    model = Model(optimizer_with_attributes(
+        SqpSolver.Optimizer, 
+        "external_optimizer" => Ipopt.Optimizer,
+    ))
 
     # define state vector (S1 pos, S1 vel, S2 pos, S2 vel)
-    x̃ = @variable(model, x[1:12])
-    x = BlockArray(x̃, [3, 3, 3, 3])
+    x̃  = @variable(model, x̃[1:12])
+    x  = BlockArray(x̃, [6, 6])
+    x₁ = x[Block(1)]
+    x₂ = x[Block(2)]
 
     # define objective (cost function)
-    @NLobjective(model, Min, x[1]^2 + x[2]^2)
+    @NLobjective(model, Min, x₁[1]^2 + x₂[1]^2)
 
     # define constraints
-    @NLconstraint(model, x[1] + x[2] ≥ 1)
+    @constraint(model, x₁[1] + x₂[1] ≥ 1)
 
     # solve
     optimize!(model)
