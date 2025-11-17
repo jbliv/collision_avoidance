@@ -3,6 +3,7 @@ module FinalProject
 using SqpSolver
 using Ipopt
 using JuMP
+using LinearAlgebra: norm, norm_sqr, Diagonal
 using BlockArrays: BlockArray, Block
 
 include("dynamics.jl")

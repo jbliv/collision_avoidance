@@ -38,8 +38,8 @@ function setup_trajectory_game(; environment = nothing)
             end
         end
 
-        # three-dimensional double integrator
-        sat_dynamics = custom_double_integrator(;
+        # double integrator for three-dimensional Keplerian orbit
+        sat_dynamics = orbital_double_integrator(;
             state_bounds = (; lb = [-Inf, -Inf, -Inf, -Inf, -Inf, -Inf], ub = [Inf, Inf, Inf, Inf, Inf, Inf]),
             control_bounds = (; lb = [-Inf, -Inf, -Inf], ub = [Inf, Inf, Inf]),
         )
