@@ -14,6 +14,12 @@ using FinalProject
 
 function run()
 
+    initial_state = 
+
+end
+
+function test()
+
     # set up model to use SQP solver
     model = Model(optimizer_with_attributes(
         SqpSolver.Optimizer, 
@@ -31,6 +37,7 @@ function run()
 
     # define constraints
     @constraint(model, x₁[1] + x₂[1] ≥ 1)
+    # @NLconstraint(model, x₁[1]^2 ye+ x₂[1]^2 ≥ 1) # this breaks the solver without a good initial guess
 
     # solve
     optimize!(model)
