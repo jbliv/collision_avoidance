@@ -5,15 +5,16 @@ function setup_trajectory_game(; environment = nothing)
 
     # locally define cost for each player
     cost = let
-        function stage_cost(x, u, t, θ)
-            x1, x2 = blocks(x)
-            u1, u2 = blocks(u)
+        function stage_cost(x, u, t, θ, xnom)
+            x1, x2       = blocks(x)
+            u1, u2       = blocks(u)
+            x1nom, x2nom = blocks(xnom)
 
             # cost for player 1 and player 2
             # NOTE: currently set to only penalize fuel consumption
             [
-                norm_sqr(u1),
-                norm_sqr(u2),
+                (x1-x1nom)'*Q1*(x1-x1nom) + u1'*R1*u1,
+                (x2-x2nom)'*Q2*(x2-x2nom) + u2'*R2*u2,
             ]
 
             # condense into a single cost over time
@@ -53,4 +54,76 @@ function setup_trajectory_game(; environment = nothing)
 end
 
 
+function build_parametric_game(; game = setup_trajectory_game(), horizon = 10)
+
+    # check that the game only has two players
+    N = 2
+    N == num_players(game) || error("Should have only two players")
+
+    # construct costs
+    function player_cost(τ, θ, player_index)
+        (; xs, us) = unpack_trajectory(τ; game.dynamics)
+        ts = Iterators.eachindex(xs)
+        Iterators.map(xs, us, ts) do x, u, t
+            game.cost.stage_cost(x, u, t, θ)[player_index]
+        end |> game.cost.reducer
+    end
+
+    # cost function for each player
+    fs = [(τ, θ) -> player_cost(τ, θ, ii) for ii in 1:N]
+
+    # dummy individual constraints
+    # POSSIBLY UPDATE THIS!!!!!
+    # NOTE: the dynamics should no longer be shared constraints but individual to each player
+    # because they are linearized about the nominal trajectory
+
+    gs = Vector{Function}(undef, N)
+    for i in 1:N
+        gs[i] = (τ, θ) -> let
+            (; xs, us) = unpack_trajectory(τ; init)
+            
+            # get all of the ith player's states
+            xis    = xs[:][Block(i)]
+            xinoms = xnoms[:][Block(i)]
+            θi     = θ[Block(i)]
+
+            # enforce the given initial condition
+            g1 = xis[1] - θi
+
+            # dynamics constraints
+            ts = Iterators.eachindex(xs)
+            g2 = mapreduce(vcat, ts[2:end]) do t
+                xis[t] - orbit_dynamics(xinoms[t-1], xis[t-1], us[t-1])
+            end
+
+            vcat(g1, g2)
+
+        end
+
+    end
+
+    # dummy individual inequality constraint
+    hs = [(τ, θ) -> [0] for _ in 1:N]
+
+    # shared equality constraints
+    # NOTE: the probability of collision/miss-distance constraint should be shared between the two
+    g̃ = (τ, θ) -> let
+        (; xs, us) = unpack_trajectory(τ; game.dynamics)
+
+        # Force all players to start at the given initial condition.
+        g̃1 = xs[1] - θ
+
+        # Dynamics constraints.
+        ts = Iterators.eachindex(xs)
+        g̃2 = mapreduce(vcat, ts[2:end]) do t
+            xs[t] - game.dynamics(xs[t - 1], us[t - 1])
+        end
+
+        vcat(g̃1, g̃2)
+    end
+
+end
+
+# NOTE: need to pass in init.num_states, init.num_control, init.num_players into unpack_trajectories
+# instead of passing in game.dynamics
 

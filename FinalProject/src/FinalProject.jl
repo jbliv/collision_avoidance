@@ -6,8 +6,11 @@ using JuMP
 using LinearAlgebra: norm, norm_sqr, Diagonal
 using BlockArrays: BlockArray, Block
 
+include("parameters.jl")
+export init_conds, get_P
+
 include("dynamics.jl")
-export custom_double_integrator
+export orbital_double_integrator
 
 include("collision_avoid_game.jl")
 export run, tests

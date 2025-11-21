@@ -14,7 +14,15 @@ using FinalProject
 
 function run()
 
-    initial_state = 
+    # get initial conditions
+    init = init_conds()
+
+    # set up trajectory and parametric game
+    game            = setup_trajectory_game(; environment)
+    parametric_game = build_parametric_game(; game, init.horizon)
+
+
+
 
 end
 
@@ -37,7 +45,7 @@ function test()
 
     # define constraints
     @constraint(model, x₁[1] + x₂[1] ≥ 1)
-    # @NLconstraint(model, x₁[1]^2 ye+ x₂[1]^2 ≥ 1) # this breaks the solver without a good initial guess
+    # @NLconstraint(model, x₁[1]^2 + x₂[1]^2 ≥ 1) # this breaks the solver without a good initial guess
 
     # solve
     optimize!(model)
