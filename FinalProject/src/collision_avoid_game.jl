@@ -1,15 +1,4 @@
 
-
-# Steps:
-# cd FinalProject
-# julia
-# ] activate .
-# import Pkg
-# Pkg.instantiate()
-# using Revise
-# using FinalProject
-# FinalProject.run()
-
 using FinalProject
 
 function run()
@@ -18,10 +7,24 @@ function run()
     init = init_conds()
 
     # set up trajectory and parametric game
-    game            = setup_trajectory_game(; environment)
-    parametric_game = build_parametric_game(; game, init.horizon)
+    game_setup       = setup_trajectory_game(; environment = nothing)
+    fs, gs, hs, g̃, h̃ = get_objectives_and_constraints(; game = game_setup, horizon = init.horizon)
 
+    # TESTING
+    model = Model(optimizer_with_attributes(
+        SqpSolver.Optimizer, 
+        "external_optimizer" => Ipopt.Optimizer,
+    ))
 
+    # extract objectives and constraints
+    @NLobjective(model, Min, fs)
+    @NLconstraint(model, gs)
+    @NLconstraint(model, g̃)
+    @NLconstraint(model, hs)
+    @NLconstraint(model, h̃)
+
+    optimize!(model)
+    value.(x)
 
 
 end

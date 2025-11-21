@@ -3,10 +3,10 @@ mutable struct Init
     
     # S1 pos, S1 vel, S2 pos, S2 vel
     x::Vector{Float64}
-    xnoms::Vector{Vector{Float64}}
+    xnoms::Vector{AbstractVector{Float64}}
 
     # number of time steps
-    horizon::Float64
+    horizon::Int
 
     # number of players, states, and control inputs
     num_players::Float64
@@ -40,7 +40,7 @@ function init_conds()
     R2 = I(3)
 
     init = Init(x,
-                xnom,
+                xnoms,
                 horizon,
                 num_players,
                 length(x),
@@ -57,10 +57,15 @@ end
 # pre-compute nominal states
 function get_nominal_states(xnom0, horizon)
 
-    xnoms = Vector{Vector{Float64}}(undef, horizon)
+    xnoms = Vector{AbstractVector{Float64}}(undef, horizon)
 
     for t = 1:horizon
+
         # TODO: INTEGRATE NOMINAL STATES HERE!!!
+
+        # TEMPORARY
+        xnoms[t] = BlockArray(zeros(12), [6, 6])
+
     end
 
     # NOTE: at each time, xnom needs to be a block array with x1nom, x2nom

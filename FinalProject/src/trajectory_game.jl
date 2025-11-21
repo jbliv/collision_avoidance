@@ -24,41 +24,39 @@ function setup_trajectory_game(; init = init_conds(), environment = nothing)
             TimeSeparableTrajectoryGameCost(stage_cost, reducer, GeneralSumCostStructure(), 1.0)
 
         end
-
-        function collision_avoid_constraint(xs, us, θ)
-
-            # get collision avoidance constraint for each time (as a vector)
-            mapreduce(vcat, xs) do x
-                x1, x2 = blocks(x)
-
-                # TODO: UPDATE THIS WITH CORRECT COLLISION AVOIDANCE CONSTRAINT!!!
-                # TODO: INCORPORATE TIME HERE --> use get_P(t) to get P_c covariance matrix
-                # NOTE: if necessary, can bring this outside of this setup_trajectory_game function
-                # and just define it when shared inequality constraints are defined later
-
-                # nonlinear collision avoidance constraint goes here
-                # NOTE: for now, they must be 10 m away from each other
-                (x2[1:3] - x1[1:3])' * (x2[1:3] - x1[1:3]) - 100
-
-            end
-        end
-
-        # double integrator for three-dimensional Keplerian orbit
-        dynamics = ProductDynamics(
-                [orbital_double_integrator(init, i;
-                state_bounds = (; lb = [-Inf, -Inf, -Inf, -Inf, -Inf, -Inf], ub = [Inf, Inf, Inf, Inf, Inf, Inf]),
-                control_bounds = (; lb = [-Inf, -Inf, -Inf], ub = [Inf, Inf, Inf]),
-            ) for i = 1:2]
-        )
-
-        TrajectoryGame(dynamics, cost, environment, collision_avoid_constraint)
-
     end
+
+    function collision_avoid_constraint(xs, us, θ)
+
+        # get collision avoidance constraint for each time (as a vector)
+        mapreduce(vcat, xs) do x
+            x1, x2 = blocks(x)
+
+            # TODO: UPDATE THIS WITH CORRECT COLLISION AVOIDANCE CONSTRAINT!!!
+            # TODO: INCORPORATE TIME HERE --> use get_P(t) to get P_c covariance matrix
+            # NOTE: if necessary, can bring this outside of this setup_trajectory_game function
+            # and just define it when shared inequality constraints are defined later
+
+            # nonlinear collision avoidance constraint goes here
+            # NOTE: for now, they must be 10 m away from each other
+            (x2[1:3] - x1[1:3])' * (x2[1:3] - x1[1:3]) - 100
+
+        end
+    end
+
+    # double integrator for three-dimensional Keplerian orbit
+    dynamics = ProductDynamics(
+            [orbital_double_integrator(init, i;
+            state_bounds = (; lb = [-Inf, -Inf, -Inf, -Inf, -Inf, -Inf], ub = [Inf, Inf, Inf, Inf, Inf, Inf]),
+            control_bounds = (; lb = [-Inf, -Inf, -Inf], ub = [Inf, Inf, Inf]),
+        ) for i = 1:2]
+    )
+
+    TrajectoryGame(dynamics, cost, environment, collision_avoid_constraint)
 
 end
 
-
-function build_parametric_game(; game = setup_trajectory_game(), horizon = 10)
+function get_objectives_and_constraints(; game = setup_trajectory_game(), horizon = 10)
 
     # check that the game only has two players
     N = 2
@@ -112,22 +110,7 @@ function build_parametric_game(; game = setup_trajectory_game(), horizon = 10)
     # NOTE: use collision_avoid_constraint(xs, us, θ) here
     h̃ = (τ, θ) -> [0]
 
-    # return parametric game
-    ParametricGame(; 
-        objectives = fs,
-        equality_constraints = gs,
-        inequality_constraints = hs,
-        shared_equality_constraint = g̃,
-        shared_inequality_constraint = h̃,
-        parameter_dimension = state_dim(game.dynamics),
-        primal_dimensions = [
-            horizon * (state_dim(game.dynamics, ii) + control_dim(game.dynamics, ii)) for ii in 1:N
-        ],
-        equality_dimensions = [1 for _ in 1:N],
-        inequality_dimensions = [1 for _ in 1:N],
-        shared_equality_dimension = 0,
-        shared_inequality_dimension = 0, # TODO: UPDATE THIS LATER
-    )
+    return fs, gs, hs, g̃, h̃
 
 end
 

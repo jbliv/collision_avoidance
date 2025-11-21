@@ -15,10 +15,10 @@ function orbital_double_integrator(init, i; dt = 0.1, m = 1, mu = 3.986e14, kwar
         r    = xnom[1:3]
         rmag = norm(r)
 
-        # Jacobian of dynamics w.r.t. state
+        # Jacobian of orbital dynamics w.r.t. state
         A[t] = [
-            I(3), Diagonal([dt, dt, dt]);
-            (-mu / rmag^3) * I(3) + 3 * mu * (r * r') / rmag^5, I(3)
+            I(3)                               Diagonal([dt, dt, dt])
+            (-mu / rmag^3) * I(3) + 3 * mu * (r * r') / rmag^5   I(3)
         ]
     
     end
