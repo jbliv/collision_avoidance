@@ -5,6 +5,7 @@ using Ipopt
 using JuMP
 using LinearAlgebra: norm, norm_sqr, Diagonal
 using BlockArrays: BlockArray, Block
+using TrajectoryGamesBase: rollout
 
 include("parameters.jl")
 export init_conds, get_P

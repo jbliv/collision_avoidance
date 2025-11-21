@@ -3,7 +3,7 @@ mutable struct Init
     
     # S1 pos, S1 vel, S2 pos, S2 vel
     x::Vector{Float64}
-    xnom::Vector{Float64}
+    xnoms::Vector{Vector{Float64}}
 
     # number of time steps
     horizon::Float64
@@ -13,18 +13,59 @@ mutable struct Init
     num_states::Float64
     num_control::Float64
 
+    # Q, R weights
+    Q1::Matrix{Float64}
+    Q2::Matrix{Float64}
+    R1::Matrix{Float64}
+    R2::Matrix{Float64}
+
 end
 
 # initial conditions
 function init_conds()
 
     # initial true and nominal states
-    x    = zeros(12)
-    xnom = zeros(12)
+    horizon     = 2
+    num_players = 2
+    x           = zeros(12)
 
-    init = Init(x, xnom, 2, 2, length(x), 3)
+    # get nominal states
+    xnom0 = zeros(12)
+    xnoms = get_nominal_states(xnom0, horizon)
+
+    # Q, R weights
+    Q1 = I(6)
+    Q2 = I(6)
+    R1 = I(3)
+    R2 = I(3)
+
+    init = Init(x,
+                xnom,
+                horizon,
+                num_players,
+                length(x),
+                3,
+                Q1,
+                Q2,
+                R1,
+                R2)
 
     return init
+
+end
+
+# pre-compute nominal states
+function get_nominal_states(xnom0, horizon)
+
+    xnoms = Vector{Vector{Float64}}(undef, horizon)
+
+    for t = 1:horizon
+        # TODO: INTEGRATE NOMINAL STATES HERE!!!
+    end
+
+    # NOTE: at each time, xnom needs to be a block array with x1nom, x2nom
+
+    return xnoms
 
 end
 
