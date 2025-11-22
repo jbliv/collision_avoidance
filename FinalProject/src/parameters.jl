@@ -2,16 +2,16 @@
 mutable struct Init
     
     # S1 pos, S1 vel, S2 pos, S2 vel
-    x::Vector{Float64}
+    x::AbstractVector{Float64}
     xnoms::Vector{AbstractVector{Float64}}
 
     # number of time steps
     horizon::Int
 
     # number of players, states, and control inputs
-    num_players::Float64
-    num_states::Float64
-    num_control::Float64
+    num_players::Int
+    num_states::Int
+    num_control::Int
 
     # Q, R weights
     Q1::Matrix{Float64}
@@ -25,9 +25,10 @@ end
 function init_conds()
 
     # initial true and nominal states
-    horizon     = 2
+    horizon     = 1
     num_players = 2
-    x           = zeros(12)
+    x           = BlockArray(zeros(12), [6, 6])
+    num_control = 6
 
     # get nominal states
     xnom0 = zeros(12)
@@ -44,7 +45,7 @@ function init_conds()
                 horizon,
                 num_players,
                 length(x),
-                3,
+                num_control,
                 Q1,
                 Q2,
                 R1,

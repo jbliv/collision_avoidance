@@ -4,9 +4,11 @@ using SqpSolver
 using Ipopt
 using JuMP
 using LinearAlgebra: norm, norm_sqr, Diagonal, I
-using BlockArrays: BlockArray, Block
+using BlockArrays: BlockArray, Block, blocks
 using TrajectoryGamesBase: rollout, ProductDynamics, TrajectoryGame, state_bounds,
-                           control_bounds, LinearDynamics, num_players
+                           control_bounds, LinearDynamics, num_players, state_dim,
+                           control_dim, stack_trajectories, unstack_trajectory,
+                           TimeSeparableTrajectoryGameCost, GeneralSumCostStructure
 
 include("parameters.jl")
 export init_conds, get_P

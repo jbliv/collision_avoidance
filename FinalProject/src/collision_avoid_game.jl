@@ -16,16 +16,43 @@ function run()
         "external_optimizer" => Ipopt.Optimizer,
     ))
 
-    # extract objectives and constraints
-    @NLobjective(model, Min, fs)
-    @NLconstraint(model, gs)
-    @NLconstraint(model, g̃)
-    @NLconstraint(model, hs)
-    @NLconstraint(model, h̃)
+    @variable(model, τ[1:(init.num_states+init.num_control)*init.horizon])
+    τ = BlockArray(τ, [Int(init.horizon*(init.num_states/2+init.num_control/2)), 
+                       Int(init.horizon*(init.num_states/2+init.num_control/2))])
+    
+
+    # # extract objectives and constraints
+    # f_new(τ) = fs[1](τ)
+    # println(fs[1](τ))
+    # JuMP.register(model, :f_new, 1, f_new; autodiff=false)
+
+    function f_new_flat(x::T...) where T<:Real
+        # x is now a tuple of numbers; convert to vector
+        τ_vec = collect(x)
+        
+        # call your original fs[1], but you need to convert τ_vec to a BlockArray
+        # with the same shape as fs[1] expects:
+        τ_block = BlockArray(τ_vec, [Int(length(τ_vec)/2), Int(length(τ_vec)/2)]) 
+    
+        # compute the cost
+        fs[1](τ_block)
+    end
+
+    register(model, :f_new_flat, length(τ), f_new_flat; autodiff = true)
+    @NLobjective(model, Min, f_new_flat(τ...))
+
+    # @NLobjective(model, Min, f_new(τ))
+    println(gs[1](τ))
+    # @constraint(model, gs[1](τ))
+    # @constraint(model, g̃)
+    # @constraint(model, hs)
+    # @constraint(model, h̃)
 
     optimize!(model)
-    value.(x)
+    # value.(x)
 
+    # FOOD FOR THOUGHT: if I do MPC is that a feedback SQP approach
+    # but without it and only doing one time horizon would be an open loop approach?
 
 end
 

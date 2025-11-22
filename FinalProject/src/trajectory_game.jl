@@ -5,28 +5,28 @@ function setup_trajectory_game(; init = init_conds(), environment = nothing)
 
     # locally define cost for each player
     cost = let
-        function stage_cost(x, u, t, θ, xnom)
+        function stage_cost(x, u, t)
             x1, x2       = blocks(x)
             u1, u2       = blocks(u)
-            x1nom, x2nom = blocks(xnom)
+            x1nom, x2nom = blocks(init.xnoms[t])
 
             # cost for player 1 and player 2
             [
                 (x1-x1nom)'*init.Q1*(x1-x1nom) + u1'*init.R1*u1,
                 (x2-x2nom)'*init.Q2*(x2-x2nom) + u2'*init.R2*u2,
             ]
-
-            # condense into a single cost over time
-            function reducer(stage_costs)
-                reduce(.+, stage_costs) ./ length(stage_costs)
-            end
-
-            TimeSeparableTrajectoryGameCost(stage_cost, reducer, GeneralSumCostStructure(), 1.0)
-
         end
+
+        # condense into a single cost over time
+        function reducer(stage_costs)
+            reduce(.+, stage_costs) ./ length(stage_costs)
+        end
+
+        TimeSeparableTrajectoryGameCost(stage_cost, reducer, GeneralSumCostStructure(), 1.0)
+
     end
 
-    function collision_avoid_constraint(xs, us, θ)
+    function collision_avoid_constraint(xs, us)
 
         # get collision avoidance constraint for each time (as a vector)
         mapreduce(vcat, xs) do x
@@ -56,41 +56,40 @@ function setup_trajectory_game(; init = init_conds(), environment = nothing)
 
 end
 
-function get_objectives_and_constraints(; game = setup_trajectory_game(), horizon = 10)
+function get_objectives_and_constraints(; init = init_conds(), game = setup_trajectory_game(), horizon = 10)
 
     # check that the game only has two players
     N = 2
     N == num_players(game) || error("Should have only two players")
 
     # construct costs
-    function player_cost(τ, θ, player_index)
+    function player_cost(τ, player_index)
         (; xs, us) = unpack_trajectory(τ; game.dynamics)
         ts = Iterators.eachindex(xs)
         Iterators.map(xs, us, ts) do x, u, t
-            game.cost.stage_cost(x, u, t, θ)[player_index]
+            game.cost.stage_cost(x, u, t)[player_index]
         end |> game.cost.reducer
     end
 
     # cost function for each player
-    fs = [(τ, θ) -> player_cost(τ, θ, ii) for ii in 1:N]
+    fs = [(τ) -> player_cost(τ, ii) for ii in 1:N]
 
     # individual equality constraints
     gs = Vector{Function}(undef, N)
     for i in 1:N
-        gs[i] = (τ, θ) -> let
-            (; xs, us) = unpack_trajectory(τ; init)
-            
-            # get all of the ith player's states
-            xis    = xs[:][Block(i)]
-            θi     = θ[Block(i)]
+        gs[i] = (τ) -> let
+            (; xs, us) = unpack_trajectory(τ; game.dynamics)
 
             # enforce the given initial condition
-            g1 = xis[1] - θi
+            g1 = xs[1][Block(i)] - init.x[Block(i)]
+            println(g1)
+            println(xs[1][Block(2)] - init.x[Block(2)])
+            println(xs)
 
             # dynamics constraints
             ts = Iterators.eachindex(xs)
             g2 = mapreduce(vcat, ts[2:end]) do t
-                xis[t] - game.dynamics(xis[t-1], us[t-1], t-1)
+                xs[t][Block(i)] - game.dynamics(xs[t-1], us[t-1], t-1)
             end
 
             vcat(g1, g2)
@@ -100,15 +99,15 @@ function get_objectives_and_constraints(; game = setup_trajectory_game(), horizo
 
     # dummy individual inequality constraint
     # TODO: POSSIBLY ADD INDIVIDUAL FUEL CONSTRAINTS HERE
-    hs = [(τ, θ) -> [0] for _ in 1:N]
+    hs = [(τ) -> [0] for _ in 1:N]
 
     # dummy shared equality constraints
-    g̃ = (τ, θ) -> [0]
+    g̃ = (τ) -> [0]
 
     # TODO: IMPLEMENT SHARED INEQUALITY CONSTRAINTS!!!
     # NOTE: the probability of collision/miss-distance constraint should be shared between the two
     # NOTE: use collision_avoid_constraint(xs, us, θ) here
-    h̃ = (τ, θ) -> [0]
+    h̃ = (τ) -> [0]
 
     return fs, gs, hs, g̃, h̃
 
@@ -118,6 +117,25 @@ end
 # instead of passing in game.dynamics
 
 
-# can use rollout which takes in a dynamics function which takes in x, u, t, so just internally in the dynamics
-# function we need to determine what the xnom is to use in the linearization
+# unpack trajectory
+function unpack_trajectory(flat_trajectory; dynamics::ProductDynamics)
+    trajs = Iterators.map(1:num_players(dynamics), blocks(flat_trajectory)) do ii, τ
+        horizon = Int(length(τ) / (state_dim(dynamics, ii) + control_dim(dynamics, ii)))
+        num_states = state_dim(dynamics, ii) * horizon
+        X = reshape(τ[1:num_states], (state_dim(dynamics, ii), horizon))
+        U = reshape(τ[(num_states + 1):end], (control_dim(dynamics, ii), horizon))
+
+        (; xs = eachcol(X) |> collect, us = eachcol(U) |> collect)
+    end
+
+    stack_trajectories(trajs)
+end
+
+# pack trajectory
+function pack_trajectory(traj)
+    trajs = unstack_trajectory(traj)
+    mapreduce(vcat, trajs) do τ
+        vcat(reduce(vcat, τ.xs), reduce(vcat, τ.us))
+    end
+end
 
