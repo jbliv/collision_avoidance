@@ -13,8 +13,8 @@ using LinearAlgebra
 
 # Initialize Parameters:
 mu = 3.986e5        # km^3/s^2
-re = 6378.1     # km
-HBR = 0.002         # combined hard body radius (2 meters)
+re = 6378.1         # km
+HBR = 0.003         # combined hard body radius (3 meters)
 TCA_days = 7        # TCA in days
 TCA = TCA_days*24*3600     # TCA in sec
 tspan = (0.0, TCA)
@@ -118,7 +118,18 @@ println("Relative Position at TCA (km) in RTN: ", rho_TCA_RTN)
 ##--------------------------- COMPUTE COVARIANCE --------------------------------
 P_satA = cov_ECI(satA_posTCA, satA_velTCA, TCA)
 P_satB = cov_ECI(satB_posTCA, satB_velTCA, TCA)
-P = P_satA + P_satB
+
+# Assume baseline level of uncertainty at TCA (user defined)
+# Nominal uncertainty is 10-50m (1-sigma) in radial, 5-20m (1-sigma) in Normal,
+# and 50-500m (1-sigma) in-track for well tracked objects
+baseline_unc = [(10/1000)^2, (50/1000)^2, (10/1000)^2]
+P_add = diagm(baseline_unc)
+P_add_ECI = R_eci2rtn' * P_add * R_eci2rtn      #Rotate RTN --> ECI
+
+# Add baseline uncertainty to both sat A and sat B covariance
+P = P_satA + P_satB + P_add_ECI + P_add_ECI
+
+println("\nCombined Position Uncertainty: ", P)
 
 ## -------------------- COMPUTE PROBABILITY OF COLLISION ------------------------
 # First determine encounter frame (following Dr. Jones Orbital Debris notes)
@@ -148,3 +159,10 @@ v = (x^2 / sig_x^2) + (y^2 / sig_y^2)
 
 Pc_Chan = exp(-v/2) * (1 - exp(-u/2))
 println("\nProbability of Collision Chan Method: ", Pc_Chan)
+
+# Typical Threshold used by NASA CARA team to perform CAM is 1e-4 Pc value
+if Pc_Alfriend > 1e-4
+    println("Pc Above Threshold: CAM Required")
+else
+    println("Pc Below Threshold: CAM Not Required")
+end
