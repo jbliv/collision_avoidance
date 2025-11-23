@@ -1,11 +1,13 @@
 using LinearAlgebra
-"""
-Given position, velocity (r,v) and time in seconds cov_ECI() computes
-an estimated position uncertainty as a covariance matrix at a given time
-prior to the Time of Closest Approach (TCA).
-This Covariance should be added to the desired position covariance you would 
-like the spacecraft to have at TCA.
-"""
+#
+# Provides position covariance as function of time to model uncertainty 
+# evolution as satellites approach TCA.
+
+# cov_ECI() - Given position, velocity (r,v) in ECI and time in seconds, 
+# computes an estimated position covariance matrix in the ECI frame at a 
+# given timein seconds prior to the Time of Closest Approach (TCA)
+#
+
 ##------------------------------ COMPUTING COVARIANCE ------------------------------
 #Prediction Error Polynomials from Duncan/Long Paper (specific to satellites w/ altitude
 # of ~700km)
@@ -48,6 +50,21 @@ function cov_ECI(r, v, t_seconds)
 
     return C' * pos_cov_RTN * C
 end
+
+# Approximate value for Pc assuming constant probability density
+# over collision sphere
+# Pc = R^2/(2*det(P)^.5) * exp(-(rho^T * P^-1 * rho)/2)
+# 2D-Pc method uses a 2x2 covariance
+function Pc(rho::AbstractVector, P::AbstractMatrix, HBR::Real)
+    detP = det(P)
+    @assert detP > 0 "Covariance matrix Σ must be positive definite"
+
+    P_inv = inv(P)
+    exponent = -0.5 * dot(rho, P_inv * rho)
+
+    return (HBR^2) / (2 * sqrt(detP)) * exp(exponent)
+end
+
 
 
 
