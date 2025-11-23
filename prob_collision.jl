@@ -6,7 +6,7 @@ using LinearAlgebra
 # orbit_utils.jl and cov_utils.jl hold supporting functions for this script
 # Adjust TCA_days below to change number of days until time of closest approach
 # of satellites 
-# Adjust 
+# Adjust arc_length_dist below to alter miss distance at TCA
 
 # Sat A = satellite in circular orbit
 # Sat B = satellite in elliptical transfer orbit
