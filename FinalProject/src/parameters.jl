@@ -5,8 +5,14 @@ mutable struct Init
     x::AbstractVector{Float64}
     xnoms::Vector{AbstractVector{Float64}}
 
-    # number of time steps
+    # how often to replan using next horizon (must be <= horizon)
+    turn_length::Int
+
+    # number of future time steps to use for current horizon (must be <= n_sim_steps)
     horizon::Int
+
+    # total number of time steps for entire simulation
+    n_sim_steps::Int
 
     # number of players, states, and control inputs
     num_players::Int
@@ -25,14 +31,16 @@ end
 function init_conds()
 
     # initial true and nominal states
-    horizon     = 1
+    turn_length = 2
+    horizon     = 2
+    n_sim_steps = 10
     num_players = 2
     x           = BlockArray(zeros(12), [6, 6])
     num_control = 6
 
     # get nominal states
-    xnom0 = zeros(12)
-    xnoms = get_nominal_states(xnom0, horizon)
+    xnom0 = BlockArray(ones(12), [6, 6])
+    xnoms = get_nominal_states(xnom0, n_sim_steps)
 
     # Q, R weights
     Q1 = I(6)
@@ -42,7 +50,9 @@ function init_conds()
 
     init = Init(x,
                 xnoms,
+                turn_length,
                 horizon,
+                n_sim_steps,
                 num_players,
                 length(x),
                 num_control,
@@ -58,14 +68,16 @@ end
 # pre-compute nominal states
 function get_nominal_states(xnom0, horizon)
 
-    xnoms = Vector{AbstractVector{Float64}}(undef, horizon)
+    # initialize nominal state array
+    xnoms    = Vector{AbstractVector{Float64}}(undef, horizon)
+    xnoms[1] = xnom0
 
-    for t = 1:horizon
+    for t = 2:horizon
 
         # TODO: INTEGRATE NOMINAL STATES HERE!!!
 
         # TEMPORARY
-        xnoms[t] = BlockArray(zeros(12), [6, 6])
+        xnoms[t] = BlockArray(ones(12), [6, 6])
 
     end
 

@@ -7,8 +7,8 @@ function orbital_double_integrator(init, i; dt = 0.1, m = 1, mu = 3.986e14, kwar
 
     # time-varying linear dynamics (nonlinear dynamics linearized about nominal)
     # NOTE: If m = 1, then input u := (ax, ay, az). If m != 1, then input u := (fx, fy, fz)
-    A = Vector{Matrix{Float64}}(undef, init.horizon)
-    for t = 1:init.horizon
+    A = Vector{Matrix{Float64}}(undef, init.n_sim_steps)
+    for t = 1:init.n_sim_steps
 
         # get nominal position for ith player
         xnom = init.xnoms[t][Block(i)]
@@ -33,7 +33,7 @@ function orbital_double_integrator(init, i; dt = 0.1, m = 1, mu = 3.986e14, kwar
             0.0 dt 0.0
             0.0 0.0 dt
         ] / m
-        for t in 1:init.horizon
+        for t in 1:init.n_sim_steps
     ]
 
     return LinearDynamics(; A, B, kwargs...)
