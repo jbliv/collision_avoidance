@@ -1,6 +1,6 @@
 
 # NOTE: this is based on planar_double_integrator from TrajectoryGamesExamples.jl but adapted for three-dimensional motion
-function orbital_double_integrator(init, i; dt = 1, m = 1, mu = 3.986e14, kwargs...)
+function orbital_double_integrator(init, i; dt = 0.1, m = 1, mu = 3.986e5, kwargs...)
 
     # get dt parameter
     dt2 = 0.5 * dt * dt

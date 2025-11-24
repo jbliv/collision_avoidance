@@ -17,8 +17,10 @@ xB_x = [x[7] for x in xs]
 xB_y = [x[8] for x in xs]
 xB_z = [x[9] for x in xs]
 
-plot(xA_x, xA_y, label="Sat A", lw=2, xlabel="X-Position [m]", ylabel="Y-Position[m]")
-plot!(xB_x, xB_y, label="Sat B", lw=2, xlabel="X-Position [m]", ylabel="Y-Position[m]")
+println(xA_x - xB_x)
+
+plot(xA_x, xA_y, label="Sat A", lw=2, xlabel="X-Position [km]", ylabel="Y-Position[km]")
+plot!(xB_x, xB_y, label="Sat B", lw=2, xlabel="X-Position [km]", ylabel="Y-Position[km]")
 savefig("trajectoryXY.png")
 
 plot3d(xA_x, xA_y, xA_z, label="Sat A", lw=2)

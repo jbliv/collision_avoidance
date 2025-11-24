@@ -41,7 +41,7 @@ function setup_trajectory_game(; init = init_conds(), environment = nothing)
             P_2D   = get_P(t)
 
             # nonlinear collision avoidance constraint goes here
-            (x2[1:3] - x1[1:3])' * P_2D * (x2[1:3] - x1[1:3]) - 100
+            (x2[1:3] - x1[1:3])' * P_2D * (x2[1:3] - x1[1:3]) - 0
 
         end
     end

@@ -34,19 +34,19 @@ end
 function init_conds()
 
     # initial true and nominal states
-    turn_length = 2
-    horizon     = 2
-    n_sim_steps = 10
-    TCA_sec     = 50
+    turn_length = 3
+    horizon     = 10
+    n_sim_steps = 800
+    TCA_sec     = 2500
     num_players = 2
-    x           = get_init_states(n_sim_steps) # BlockArray(zeros(12), [6, 6])
+    x           = get_init_states(TCA_sec) # BlockArray(zeros(12), [6, 6])
     num_control = 6
 
     # NOTE: for now, the initial nominal and true states of the satellites
     # are set to be the same
 
     # get nominal states
-    xnom0 = get_init_states(n_sim_steps) # BlockArray(ones(12), [6, 6])
+    xnom0 = get_init_states(TCA_sec) # BlockArray(ones(12), [6, 6])
     xnoms = get_nominal_states(xnom0, n_sim_steps)
 
     # Q, R weights
@@ -74,7 +74,7 @@ function init_conds()
 end
 
 # pre-compute nominal states
-function get_nominal_states(xnom0, n_sim_steps; mu = 3.986e14)
+function get_nominal_states(xnom0, n_sim_steps; mu = 3.986e5)
 
     # initialize nominal state array
     xnoms    = Vector{AbstractVector{Float64}}(undef, n_sim_steps)
@@ -112,7 +112,7 @@ end
 function get_P(t; init = init_conds())
 
     # combined hard body radius (2 meters)
-    HBR = 0.002
+    HBR = 0.002 # km
 
     # get nominal positions and velocities
     satA_pos = init.xnoms[t][Block(1)][1:3]
@@ -161,21 +161,21 @@ function get_init_states(TCA_sec)
     TCA_hours = TCA_sec/60/60
 
     # Initialize Parameters:
-    mu              = 3.986e14        # m^3/s^2
-    re              = 6378.1e3     # m
+    mu              = 3.986e5        # km^3/s^2
+    re              = 6378.1     # km
     arc_length_dist = 0.5   # distance along Sat A orbit between Sat A and Sat B at TCA
     TCA_days        = TCA_hours/24        # TCA in days
     TCA             = TCA_days*24*3600     # TCA in sec
 
     # Smaller Circular orbit for Hohmann
-    a1    = re + 685e3           # m
+    a1    = re + 685           # km
     e1    = 0.0
     inc1  = deg2rad(98.2)    # sun synchronous orbit
     argp1 = 0.0
     RAAN1 = 0.0
 
     # Larger circ orbit for Hohmann (Aura Spacecraft (Duncan & Long paper))
-    a2    = re + 705e3  # m
+    a2    = re + 705  # km
     e2    = 0.0
     inc2  = inc1    # sun synchronous orbit
     argp2 = 0.0
