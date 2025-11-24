@@ -91,7 +91,7 @@ function get_nominal_states(xnom0, n_sim_steps; mu = 3.986e5)
         sol_A  = DifferentialEquations.solve(prob_A, reltol=1e-12, abstol=1e-14)
 
         # Sat B (elliptical transfer) propagation
-        satB_state_prev = xnoms[t-1][Block(1)]
+        satB_state_prev = xnoms[t-1][Block(2)]
         prob_B = ODEProblem(two_body!, satB_state_prev, tspan, mu)
         sol_B  = DifferentialEquations.solve(prob_B, reltol=1e-12, abstol=1e-14)
 
