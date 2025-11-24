@@ -29,20 +29,19 @@ function setup_trajectory_game(; init = init_conds(), environment = nothing)
 
     end
 
-    function collision_avoid_constraint(xs, us, θ)
+    function coupling_constraints(xs, us, θ)
 
         # get collision avoidance constraint for each time (as a vector)
-        mapreduce(vcat, xs) do x
-            x1, x2 = blocks(x)
+        mapreduce(vcat, enumerate(xs)) do (t, x)
 
             # TODO: UPDATE THIS WITH CORRECT COLLISION AVOIDANCE CONSTRAINT!!!
-            # TODO: INCORPORATE TIME HERE --> use get_P(t) to get P_c covariance matrix
-            # NOTE: if necessary, can bring this outside of this setup_trajectory_game function
-            # and just define it when shared inequality constraints are defined later
+
+            # get conjunction covariance
+            x1, x2 = blocks(x)
+            P_2D   = get_P(t)
 
             # nonlinear collision avoidance constraint goes here
-            # NOTE: for now, they must be 10 m away from each other
-            (x2[1:3] - x1[1:3])' * (x2[1:3] - x1[1:3]) - 100
+            (x2[1:3] - x1[1:3])' * P_2D * (x2[1:3] - x1[1:3]) - 100
 
         end
     end
@@ -55,7 +54,7 @@ function setup_trajectory_game(; init = init_conds(), environment = nothing)
         ) for i = 1:2]
     )
 
-    TrajectoryGame(dynamics, cost, environment, collision_avoid_constraint)
+    TrajectoryGame(dynamics, cost, environment, coupling_constraints)
 
 end
 
@@ -125,10 +124,31 @@ function build_parametric_game(; game = setup_trajectory_game(), init = init_con
     # dummy shared equality constraints
     g̃ = (τ, θ) -> [0]
 
-    # TODO: IMPLEMENT SHARED INEQUALITY CONSTRAINTS!!!
-    # NOTE: the probability of collision/miss-distance constraint should be shared between the two
-    # NOTE: use collision_avoid_constraint(xs, us, θ) here
-    h̃ = (τ, θ) -> [0]
+    # Shared inequality constraints.
+    h̃ =
+        (τ, θ) -> let
+            (; xs, us) = unpack_trajectory(τ; game.dynamics)
+
+            # collision-avoidance constriant
+            h̃1 = game.coupling_constraints(xs, us, θ)
+
+            # actuator/state limits
+            actuator_constraint = TrajectoryGamesBase.get_constraints_from_box_bounds(
+                control_bounds(game.dynamics),
+            )
+            h̃2 = mapreduce(vcat, us) do u
+                actuator_constraint(u)
+            end
+
+            state_constraint =
+                TrajectoryGamesBase.get_constraints_from_box_bounds(state_bounds(game.dynamics))
+            h̃3 = mapreduce(vcat, xs) do x
+                state_constraint(x)
+            end
+
+            vcat(h̃1, h̃2, h̃3)
+
+        end
 
     ParametricGame(;
         objectives = fs,
@@ -143,7 +163,13 @@ function build_parametric_game(; game = setup_trajectory_game(), init = init_con
         equality_dimensions = [init.horizon * state_dim(game.dynamics, ii) for ii in 1:N],
         inequality_dimensions = [1 for _ in 1:N],
         shared_equality_dimension = 1,
-        shared_inequality_dimension = 1,
+        shared_inequality_dimension = init.horizon * (
+            1 +
+            sum(isfinite.(control_bounds(game.dynamics).lb)) +
+            sum(isfinite.(control_bounds(game.dynamics).ub)) +
+            sum(isfinite.(state_bounds(game.dynamics).lb)) +
+            sum(isfinite.(state_bounds(game.dynamics).ub))
+        ),
     )
 end
 

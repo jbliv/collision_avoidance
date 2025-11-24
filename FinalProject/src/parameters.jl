@@ -105,7 +105,10 @@ end
 
 # relevant parameters including probability of collision covariance matrix
 function get_P(t; init = init_conds())
-    
+
+    # combined hard body radius (2 meters)
+    HBR = 0.002
+
     # get nominal positions and velocities
     satA_pos = init.xnoms[t][Block(1)][1:3]
     satA_vel = init.xnoms[t][Block(1)][4:6]
@@ -133,9 +136,13 @@ function get_P(t; init = init_conds())
     rho_2D = T * rho_TCA_ECI
     P_2D   = T * P * T'
 
-    Pc_Alfriend = Pc(rho_2D, P_2D, HBR)
+    # TODO: this matrix ends up not being positive definite at second time step
+    # Pc_Alfriend = Pc(rho_2D, P_2D, HBR)
 
-    return Pc_Alfriend
+    # TODO: UPDATE THIS TO RETURN ACTUAL PROB OF COLLISION
+    # ONCE THINGS ARE WORKING
+
+    return P
 
 end
 
@@ -153,47 +160,47 @@ function get_init_states()
     TCA             = TCA_days*24*3600     # TCA in sec
 
     # Smaller Circular orbit for Hohmann
-    a1 = re + 685e3           # m
-    e1 = 0.0
-    inc1 = deg2rad(98.2)    # sun synchronous orbit
+    a1    = re + 685e3           # m
+    e1    = 0.0
+    inc1  = deg2rad(98.2)    # sun synchronous orbit
     argp1 = 0.0
     RAAN1 = 0.0
 
     # Larger circ orbit for Hohmann (Aura Spacecraft (Duncan & Long paper))
-    a2 = re + 705e3  # m
-    e2 = 0.0
-    inc2 = inc1    # sun synchronous orbit
+    a2    = re + 705e3  # m
+    e2    = 0.0
+    inc2  = inc1    # sun synchronous orbit
     argp2 = 0.0
     RAAN2 = 0.0
 
     # Hohmann transfer ellipse
-    a_t = (a1 + a2)/2
-    e_t = (a2 - a1) / (a1 + a2)
-    inc_t = inc1
+    a_t    = (a1 + a2)/2
+    e_t    = (a2 - a1) / (a1 + a2)
+    inc_t  = inc1
     argp_t = 0.0
     RAAN_t = 0.0
 
     # Relative phasing for collision in TCA_days
     # Want Sat A (circular orbit) to be an arc length of 0.5km behind sat B at TCA
     nu_meetB = pi                   # true anomaly at TCA to ensure sat B close approach
-    offset = arc_length_dist/a2     # central angle in radius required for assigned arc length
+    offset   = arc_length_dist/a2     # central angle in radius required for assigned arc length
     nu_meetA = pi - offset          # true anomaly at TCA to ensure sat A close approach
 
     # Calculate initial true anom for circular orbit
-    n2  = sqrt(mu / a2^3)                 # outer circular mean motion
+    n2    = sqrt(mu / a2^3)                 # outer circular mean motion
     nu2_0 = mod(nu_meetA - n2*TCA, 2*pi)   # required initial true anomaly for sc in larger circ orbit
 
     # Calculate initial true anom for elliptical transfer orbit
     # First, must compute mean anomaly at nu_meetB on the transfer orbit
     cosE_meet = (e_t + cos(nu_meetB)) / (1 + e_t*cos(nu_meetB))
-    E_meet = acos(cosE_meet)
+    E_meet    = acos(cosE_meet)
 
     # Account for fact that true anom, mean anom, and eccentric anom all in same half plane
     if nu_meetB > pi
         E_meet = 2*pi - E_meet
     end
     M_meet = E_meet - e_t*sin(E_meet)
-    nt  = sqrt(mu / a_t^3)          # elliptical transfer mean motion
+    nt     = sqrt(mu / a_t^3)          # elliptical transfer mean motion
 
     # Back out the initial mean anomaly for transfer at t=0
     M_t0 = M_meet - nt*TCA
