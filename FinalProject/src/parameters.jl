@@ -36,7 +36,7 @@ function init_conds()
     # initial true and nominal states
     turn_length = 3
     horizon     = 10
-    n_sim_steps = 800
+    n_sim_steps = 2000
     TCA_sec     = 2500
     num_players = 2
     x           = get_init_states(TCA_sec) # BlockArray(zeros(12), [6, 6])
