@@ -50,7 +50,7 @@ function setup_trajectory_game(; init = init_conds(), environment = nothing)
     dynamics = ProductDynamics(
             [orbital_double_integrator(init, i;
             state_bounds = (; lb = [-Inf, -Inf, -Inf, -Inf, -Inf, -Inf], ub = [Inf, Inf, Inf, Inf, Inf, Inf]),
-            control_bounds = (; lb = [-Inf, -Inf, -Inf], ub = [Inf, Inf, Inf]),
+            control_bounds = (; lb = [-0.05, -0.05, -0.05], ub = [0.05, 0.05, 0.05]),
         ) for i = 1:2]
     )
 
