@@ -35,11 +35,14 @@ function init_conds()
     horizon     = 2
     n_sim_steps = 10
     num_players = 2
-    x           = BlockArray(zeros(12), [6, 6])
+    x           = get_init_states() # BlockArray(zeros(12), [6, 6])
     num_control = 6
 
+    # NOTE: for now, the initial nominal and true states of the satellites
+    # are set to be the same
+
     # get nominal states
-    xnom0 = BlockArray(ones(12), [6, 6])
+    xnom0 = get_init_states() # BlockArray(ones(12), [6, 6])
     xnoms = get_nominal_states(xnom0, n_sim_steps)
 
     # Q, R weights
@@ -66,7 +69,7 @@ function init_conds()
 end
 
 # pre-compute nominal states
-function get_nominal_states(xnom0, horizon)
+function get_nominal_states(xnom0, horizon; mu = 3.986e14)
 
     # initialize nominal state array
     xnoms    = Vector{AbstractVector{Float64}}(undef, horizon)
@@ -74,23 +77,137 @@ function get_nominal_states(xnom0, horizon)
 
     for t = 2:horizon
 
-        # TODO: INTEGRATE NOMINAL STATES HERE!!!
+        # time span
+        tspan = [t-1, t]
 
-        # TEMPORARY
-        xnoms[t] = BlockArray(ones(12), [6, 6])
+        # Sat A (circular) propagation
+        satA_state_prev = xnoms[t-1][Block(1)]
+        prob_A = ODEProblem(two_body!, satA_state_prev, tspan, mu)
+        sol_A  = DifferentialEquations.solve(prob_A, reltol=1e-12, abstol=1e-14)
+
+        # Sat B (elliptical transfer) propagation
+        satB_state_prev = xnoms[t-1][Block(1)]
+        prob_B = ODEProblem(two_body!, satB_state_prev, tspan, mu)
+        sol_B  = DifferentialEquations.solve(prob_B, reltol=1e-12, abstol=1e-14)
+
+        # states at time t
+        satA_statet = sol_A(t)  #[r;v]
+        satB_statet = sol_B(t)  #[r;v]
+
+        # add satellite state to nominal state array
+        xnoms[t] = BlockArray(vcat(satA_statet, satB_statet), [6, 6])
 
     end
-
-    # NOTE: at each time, xnom needs to be a block array with x1nom, x2nom
 
     return xnoms
 
 end
 
 # relevant parameters including probability of collision covariance matrix
-function get_P(t)
+function get_P(t; init = init_conds())
+    
+    # get nominal positions and velocities
+    satA_pos = init.xnoms[t][Block(1)][1:3]
+    satA_vel = init.xnoms[t][Block(1)][4:6]
+    satB_pos = init.xnoms[t][Block(2)][1:3]
+    satB_vel = init.xnoms[t][Block(2)][4:6]
 
-    # TODO: ADD IN P_c LOGIC AS A FUNCTION OF TIME
+    # calculate miss distance (MD) vector (rho) in ECI km
+    rho_TCA_ECI = satA_pos .- satB_pos
+
+    ##--------------------------- COMPUTE COVARIANCE --------------------------------
+    P_satA = cov_ECI(satA_pos, satA_vel, t)
+    P_satB = cov_ECI(satB_pos, satB_vel, t)
+    P      = P_satA + P_satB
+
+    ## -------------------- COMPUTE PROBABILITY OF COLLISION ------------------------
+    # First determine encounter frame (following Dr. Jones Orbital Debris notes)
+    # T performs rotation from ECI to conjunction frame
+    r_rel = satB_pos .- satA_pos
+    v_rel = satB_vel .- satA_vel
+
+    u_hatx = r_rel / norm(r_rel)
+    u_haty = cross(r_rel, v_rel)/norm(cross(r_rel, v_rel))
+    T      = vcat(u_hatx', u_haty')
+
+    rho_2D = T * rho_TCA_ECI
+    P_2D   = T * P * T'
+
+    Pc_Alfriend = Pc(rho_2D, P_2D, HBR)
+
+    return Pc_Alfriend
+
+end
+
+# get initial states
+function get_init_states()
+
+    # TODO: MAKE IT SO THAT dt IS CHANGED IN DYNAMICS AND n_sim_steps, etc... in init_conds() 
+    # ARE CHANGED TO REFLECT TCA (WANT n_sim_steps > TCA)
+
+    # Initialize Parameters:
+    mu              = 3.986e14        # m^3/s^2
+    re              = 6378.1e3     # m
+    arc_length_dist = 0.5   # distance along Sat A orbit between Sat A and Sat B at TCA
+    TCA_days        = 1/24        # TCA in days
+    TCA             = TCA_days*24*3600     # TCA in sec
+
+    # Smaller Circular orbit for Hohmann
+    a1 = re + 685e3           # m
+    e1 = 0.0
+    inc1 = deg2rad(98.2)    # sun synchronous orbit
+    argp1 = 0.0
+    RAAN1 = 0.0
+
+    # Larger circ orbit for Hohmann (Aura Spacecraft (Duncan & Long paper))
+    a2 = re + 705e3  # m
+    e2 = 0.0
+    inc2 = inc1    # sun synchronous orbit
+    argp2 = 0.0
+    RAAN2 = 0.0
+
+    # Hohmann transfer ellipse
+    a_t = (a1 + a2)/2
+    e_t = (a2 - a1) / (a1 + a2)
+    inc_t = inc1
+    argp_t = 0.0
+    RAAN_t = 0.0
+
+    # Relative phasing for collision in TCA_days
+    # Want Sat A (circular orbit) to be an arc length of 0.5km behind sat B at TCA
+    nu_meetB = pi                   # true anomaly at TCA to ensure sat B close approach
+    offset = arc_length_dist/a2     # central angle in radius required for assigned arc length
+    nu_meetA = pi - offset          # true anomaly at TCA to ensure sat A close approach
+
+    # Calculate initial true anom for circular orbit
+    n2  = sqrt(mu / a2^3)                 # outer circular mean motion
+    nu2_0 = mod(nu_meetA - n2*TCA, 2*pi)   # required initial true anomaly for sc in larger circ orbit
+
+    # Calculate initial true anom for elliptical transfer orbit
+    # First, must compute mean anomaly at nu_meetB on the transfer orbit
+    cosE_meet = (e_t + cos(nu_meetB)) / (1 + e_t*cos(nu_meetB))
+    E_meet = acos(cosE_meet)
+
+    # Account for fact that true anom, mean anom, and eccentric anom all in same half plane
+    if nu_meetB > pi
+        E_meet = 2*pi - E_meet
+    end
+    M_meet = E_meet - e_t*sin(E_meet)
+    nt  = sqrt(mu / a_t^3)          # elliptical transfer mean motion
+
+    # Back out the initial mean anomaly for transfer at t=0
+    M_t0 = M_meet - nt*TCA
+    # Convert that back to true anomaly nut_0
+    nut_0 = true_anomaly_from_mean(M_t0, e_t)
+
+    # Get ECI states (X, Y, Z, Vx, Vy, Vz), km and km/s
+    satA_state0 = kepler2cart(a2, e2, inc2, argp2, RAAN2, nu2_0; mu=mu)
+    satB_state0 = kepler2cart(a_t, e_t, inc_t, argp_t, RAAN_t, nut_0; mu=mu)
+
+    # concatenate states
+    x = BlockArray(vcat(satA_state0, satB_state0), [6, 6])
+
+    return x
 
 end
 

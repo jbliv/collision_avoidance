@@ -10,6 +10,7 @@ using ParametricMCPs: ParametricMCPs, ParametricMCP
 using LinearAlgebra: norm, norm_sqr, Diagonal, I
 using BlockArrays: BlockArray, Block, blocks
 using PATHSolver: PATHSolver
+using DifferentialEquations
 
 include("parameters.jl")
 export init_conds, get_P
@@ -28,5 +29,11 @@ export setup_trajectory_game, build_parametric_game
 
 include("collision_avoid_game.jl")
 export run, tests
+
+include("orbit_utils.jl")
+export two_body!, true_anomaly_from_mean, kepler2cart
+
+include("cov_utils.jl")
+export cov_RTN, RTN2ECI, cov_ECI, Pc
 
 end
