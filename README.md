@@ -11,5 +11,5 @@ import Pkg
 Pkg.instantiate()
 using Revise
 using FinalProject
-FinalProject.run()
+include("src/plot_trajectories.jl")
 ```
