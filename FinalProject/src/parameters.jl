@@ -14,6 +14,9 @@ mutable struct Init
     # total number of time steps for entire simulation
     n_sim_steps::Int
 
+    # number of time steps until reach closest approach
+    TCA_sec::Int
+
     # number of players, states, and control inputs
     num_players::Int
     num_states::Int
@@ -34,15 +37,16 @@ function init_conds()
     turn_length = 2
     horizon     = 2
     n_sim_steps = 10
+    TCA_sec     = 50
     num_players = 2
-    x           = get_init_states() # BlockArray(zeros(12), [6, 6])
+    x           = get_init_states(n_sim_steps) # BlockArray(zeros(12), [6, 6])
     num_control = 6
 
     # NOTE: for now, the initial nominal and true states of the satellites
     # are set to be the same
 
     # get nominal states
-    xnom0 = get_init_states() # BlockArray(ones(12), [6, 6])
+    xnom0 = get_init_states(n_sim_steps) # BlockArray(ones(12), [6, 6])
     xnoms = get_nominal_states(xnom0, n_sim_steps)
 
     # Q, R weights
@@ -56,6 +60,7 @@ function init_conds()
                 turn_length,
                 horizon,
                 n_sim_steps,
+                TCA_sec,
                 num_players,
                 length(x),
                 num_control,
@@ -69,13 +74,13 @@ function init_conds()
 end
 
 # pre-compute nominal states
-function get_nominal_states(xnom0, horizon; mu = 3.986e14)
+function get_nominal_states(xnom0, n_sim_steps; mu = 3.986e14)
 
     # initialize nominal state array
-    xnoms    = Vector{AbstractVector{Float64}}(undef, horizon)
+    xnoms    = Vector{AbstractVector{Float64}}(undef, n_sim_steps)
     xnoms[1] = xnom0
 
-    for t = 2:horizon
+    for t = 2:n_sim_steps
 
         # time span
         tspan = [t-1, t]
@@ -147,16 +152,19 @@ function get_P(t; init = init_conds())
 end
 
 # get initial states
-function get_init_states()
+function get_init_states(TCA_sec)
 
     # TODO: MAKE IT SO THAT dt IS CHANGED IN DYNAMICS AND n_sim_steps, etc... in init_conds() 
     # ARE CHANGED TO REFLECT TCA (WANT n_sim_steps > TCA)
+
+    # TCA_sec = number of seconds to get to TCA
+    TCA_hours = TCA_sec/60/60
 
     # Initialize Parameters:
     mu              = 3.986e14        # m^3/s^2
     re              = 6378.1e3     # m
     arc_length_dist = 0.5   # distance along Sat A orbit between Sat A and Sat B at TCA
-    TCA_days        = 1/24        # TCA in days
+    TCA_days        = TCA_hours/24        # TCA in days
     TCA             = TCA_days*24*3600     # TCA in sec
 
     # Smaller Circular orbit for Hohmann
