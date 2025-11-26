@@ -5,6 +5,9 @@ mutable struct Init
     x::AbstractVector{Float64}
     xnoms::Vector{AbstractVector{Float64}}
 
+    # time step
+    dt::Float64
+
     # how often to replan using next horizon (must be <= horizon)
     turn_length::Int
 
@@ -34,10 +37,11 @@ end
 function init_conds()
 
     # initial true and nominal states
+    dt          = 0.1
     turn_length = 3
     horizon     = 10
     n_sim_steps = 2000
-    TCA_sec     = 20
+    TCA_sec     = 25000
     num_players = 2
     x           = get_init_states(TCA_sec) # BlockArray(zeros(12), [6, 6])
     num_control = 6
@@ -47,7 +51,7 @@ function init_conds()
 
     # get nominal states
     xnom0 = get_init_states(TCA_sec) # BlockArray(ones(12), [6, 6])
-    xnoms = get_nominal_states(xnom0, n_sim_steps)
+    xnoms = get_nominal_states(xnom0, n_sim_steps, dt)
 
     # Q, R weights
     Q1 = I(6)
@@ -57,6 +61,7 @@ function init_conds()
 
     init = Init(x,
                 xnoms,
+                dt,
                 turn_length,
                 horizon,
                 n_sim_steps,
@@ -74,7 +79,7 @@ function init_conds()
 end
 
 # pre-compute nominal states
-function get_nominal_states(xnom0, n_sim_steps; mu = 3.986e5)
+function get_nominal_states(xnom0, n_sim_steps, dt; mu = 3.986e5)
 
     # initialize nominal state array
     xnoms    = Vector{AbstractVector{Float64}}(undef, n_sim_steps)
@@ -83,7 +88,6 @@ function get_nominal_states(xnom0, n_sim_steps; mu = 3.986e5)
     for t = 2:n_sim_steps
 
         # time span
-        dt    = 0.1
         tspan = dt * [t-1, t]
 
         # Sat A (circular) propagation

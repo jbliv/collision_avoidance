@@ -15,8 +15,8 @@ function setup_trajectory_game(; init = init_conds(), environment = nothing)
 
             # cost for player 1 and player 2
             [
-                (x1-x1nom)'*init.Q1*(x1-x1nom) + u1'*init.R1*u1,
-                (x2-x2nom)'*init.Q2*(x2-x2nom) + u2'*init.R2*u2,
+                (x1-x1nom)'*init.Q1*(x1-x1nom), # + u1'*init.R1*u1,
+                (x2-x2nom)'*init.Q2*(x2-x2nom), #+ u2'*init.R2*u2,
             ]
         end
 

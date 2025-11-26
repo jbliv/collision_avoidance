@@ -1,9 +1,6 @@
 
 # NOTE: this is based on planar_double_integrator from TrajectoryGamesExamples.jl but adapted for three-dimensional motion
-function orbital_double_integrator(init, i; dt = 0.1, m = 1, mu = 3.986e5, kwargs...)
-
-    # get dt parameter
-    dt2 = 0.5 * dt * dt
+function orbital_double_integrator(init, i; m = 1, mu = 3.986e5, kwargs...)
 
     # time-varying linear dynamics (nonlinear dynamics linearized about nominal)
     # NOTE: If m = 1, then input u := (ax, ay, az). If m != 1, then input u := (fx, fy, fz)
@@ -16,7 +13,7 @@ function orbital_double_integrator(init, i; dt = 0.1, m = 1, mu = 3.986e5, kwarg
         rmag = norm(r)
 
         # Jacobian of orbital dynamics w.r.t. state
-        A[t] = I(6) + dt * [
+        A[t] = I(6) + init.dt * [
             zeros(3,3)                                                       I(3)
             ((-mu / rmag^3) * I(3) + 3 * mu * (r * r') / rmag^5)  zeros(3,3)
         ]
@@ -25,7 +22,7 @@ function orbital_double_integrator(init, i; dt = 0.1, m = 1, mu = 3.986e5, kwarg
 
     # Jacobian of dynamics w.r.t. control input
     B = [
-        dt * [
+        init.dt * [
             zeros(3,3)
             I(3)
         ] / m
