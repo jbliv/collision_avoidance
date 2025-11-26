@@ -16,22 +16,18 @@ function orbital_double_integrator(init, i; dt = 0.1, m = 1, mu = 3.986e5, kwarg
         rmag = norm(r)
 
         # Jacobian of orbital dynamics w.r.t. state
-        A[t] = [
-            I(3)                               Diagonal([dt, dt, dt])
-            (-mu / rmag^3) * I(3) + 3 * mu * (r * r') / rmag^5   I(3)
+        A[t] = I(6) + dt * [
+            zeros(3,3)                                                       I(3)
+            ((-mu / rmag^3) * I(3) + 3 * mu * (r * r') / rmag^5)  zeros(3,3)
         ]
     
     end
 
     # Jacobian of dynamics w.r.t. control input
     B = [
-        [
-            dt2 0.0 0.0
-            0.0 dt2 0.0
-            0.0 0.0 dt2
-            dt 0.0 0.0
-            0.0 dt 0.0
-            0.0 0.0 dt
+        dt * [
+            zeros(3,3)
+            I(3)
         ] / m
         for t in 1:init.n_sim_steps
     ]

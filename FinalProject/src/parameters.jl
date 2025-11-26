@@ -37,7 +37,7 @@ function init_conds()
     turn_length = 3
     horizon     = 10
     n_sim_steps = 2000
-    TCA_sec     = 2500
+    TCA_sec     = 20
     num_players = 2
     x           = get_init_states(TCA_sec) # BlockArray(zeros(12), [6, 6])
     num_control = 6
@@ -83,7 +83,8 @@ function get_nominal_states(xnom0, n_sim_steps; mu = 3.986e5)
     for t = 2:n_sim_steps
 
         # time span
-        tspan = [t-1, t]
+        dt    = 0.1
+        tspan = dt * [t-1, t]
 
         # Sat A (circular) propagation
         satA_state_prev = xnoms[t-1][Block(1)]
@@ -96,8 +97,8 @@ function get_nominal_states(xnom0, n_sim_steps; mu = 3.986e5)
         sol_B  = DifferentialEquations.solve(prob_B, reltol=1e-12, abstol=1e-14)
 
         # states at time t
-        satA_statet = sol_A(t)  #[r;v]
-        satB_statet = sol_B(t)  #[r;v]
+        satA_statet = sol_A(tspan[end])  #[r;v]
+        satB_statet = sol_B(tspan[end])  #[r;v]
 
         # add satellite state to nominal state array
         xnoms[t] = BlockArray(vcat(satA_statet, satB_statet), [6, 6])
