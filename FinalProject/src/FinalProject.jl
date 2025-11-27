@@ -1,6 +1,6 @@
 module FinalProject
 
-using TrajectoryGamesBase: rollout, ProductDynamics, TrajectoryGame, state_bounds,
+using TrajectoryGamesBase: rollout, AbstractDynamics, ProductDynamics, TrajectoryGame, state_bounds,
                            control_bounds, LinearDynamics, num_players, state_dim,
                            control_dim, stack_trajectories, unstack_trajectory,
                            TimeSeparableTrajectoryGameCost, GeneralSumCostStructure,
@@ -31,7 +31,7 @@ include("collision_avoid_game.jl")
 export run, tests
 
 include("orbit_utils.jl")
-export two_body!, true_anomaly_from_mean, kepler2cart
+export two_body!, true_anomaly_from_mean, kepler2cart, propagate_state_nonlinear
 
 include("cov_utils.jl")
 export cov_RTN, RTN2ECI, cov_ECI, Pc

@@ -244,6 +244,7 @@ end
 # receding horizon strategy that supports warm starting
 Base.@kwdef mutable struct WarmStartRecedingHorizonStrategy
     game::TrajectoryGame
+    dynamics::AbstractDynamics
     parametric_game::ParametricGame
     receding_horizon_strategy::Any = nothing
     time_last_updated::Int = 0
@@ -254,19 +255,43 @@ Base.@kwdef mutable struct WarmStartRecedingHorizonStrategy
     solution_status::Any = nothing
 end
 
+
+
 function (strategy::WarmStartRecedingHorizonStrategy)(state, time)
     plan_exists = !isnothing(strategy.receding_horizon_strategy)
     time_along_plan = time - strategy.time_last_updated + 1
     plan_is_still_valid = 1 <= time_along_plan <= strategy.turn_length
 
+    # TEMPORARY
+    strategy.dynamics = strategy.game.dynamics
+
     update_plan = !plan_exists || !plan_is_still_valid
     if update_plan
+
+        # TEMPORARY
+        # propagate the last applied controls (or zero if first step)
+        x_current = state
+        if !isnothing(strategy.last_solution)
+            applied_us = take_first_controls(strategy.last_solution, strategy.turn_length)
+            x_current = propagate_state_nonlinear(state, applied_us, strategy.game.dynamics.dt)
+        end
+
+        # rebuild dynamics linearized about the new state
+        init = init_conds()
+        strategy.dynamics = ProductDynamics(
+            [orbital_double_integrator(init, i; xnom_start=x_current,
+            state_bounds = (; lb = [-Inf, -Inf, -Inf, -Inf, -Inf, -Inf], ub = [Inf, Inf, Inf, Inf, Inf, Inf]),
+            control_bounds = (; lb = [-0.05, -0.05, -0.05], ub = [0.05, 0.05, 0.05]),
+            ) 
+            for i in 1:2]
+        )
+
         strategy.receding_horizon_strategy = TrajectoryGamesBase.solve_trajectory_game!(
             strategy.game,
             strategy.horizon,
-            state,
+            x_current,
             strategy;
-            strategy.parametric_game,
+            parametric_game = strategy.parametric_game
         )
         strategy.time_last_updated = time
         time_along_plan = 1

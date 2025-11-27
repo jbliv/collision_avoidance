@@ -12,8 +12,18 @@ function run()
 
     sim_steps = let
         progress = ProgressMeter.Progress(init.n_sim_steps)
-        receding_horizon_strategy =
-            WarmStartRecedingHorizonStrategy(; game, parametric_game, init.turn_length, init.horizon)
+        # TEMPORARY update below
+        # receding_horizon_strategy =
+        #     WarmStartRecedingHorizonStrategy(; game, dynamics=game.dynamics, parametric_game, init.turn_length, init.horizon)
+
+        # TEMPORARY
+        receding_horizon_strategy = WarmStartRecedingHorizonStrategy(
+            game = game,
+            dynamics = game.dynamics,
+            parametric_game = parametric_game,
+            turn_length = init.turn_length,
+            horizon = init.horizon
+        )
 
         rollout(
             game.dynamics,

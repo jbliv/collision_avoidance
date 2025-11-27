@@ -87,3 +87,20 @@ function two_body!(dstate, state, mu, t)
     dstate[1:3] = v
     dstate[4:6] = a
 end
+
+
+function propagate_state_nonlinear(x0, u_seq, dt; mu = 3.986e5)
+    x = copy(x0)
+    for u in u_seq
+        r = x[1:3]
+        v = x[4:6]
+        rmag = norm(r)
+        a_grav = -mu * r / rmag^3
+        a_total = a_grav + u
+        # Simple Euler integration
+        v_new = v + a_total * dt
+        r_new = r + v_new * dt
+        x = vcat(r_new, v_new)
+    end
+    x
+end

@@ -56,8 +56,8 @@ function init_conds()
     # Q, R weights
     Q1 = I(6)
     Q2 = I(6)
-    R1 = 0.01*I(3)
-    R2 = 0.01*I(3)
+    R1 = 0.001*I(3)
+    R2 = 0.001*I(3)
 
     init = Init(x,
                 xnoms,
@@ -147,7 +147,7 @@ function get_P(k, x; init = init_conds())
 
     rho_2D = T * rho_TCA_ECI
     P_2D   = T * P * T'
-    println(r_rel)
+    # println(r_rel)
 
     # TODO: this matrix ends up not being positive definite at second time step
     Pc_Alfriend = Pc(rho_2D, P_2D, HBR)
