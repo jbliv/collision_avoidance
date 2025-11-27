@@ -41,7 +41,7 @@ function init_conds()
     turn_length = 3
     horizon     = 10
     n_sim_steps = 2000
-    TCA_sec     = 25000
+    TCA_sec     = 10
     num_players = 2
     x           = get_init_states(TCA_sec) # BlockArray(zeros(12), [6, 6])
     num_control = 6
@@ -56,8 +56,8 @@ function init_conds()
     # Q, R weights
     Q1 = I(6)
     Q2 = I(6)
-    R1 = I(3)
-    R2 = I(3)
+    R1 = 0.01*I(3)
+    R2 = 0.01*I(3)
 
     init = Init(x,
                 xnoms,
@@ -114,23 +114,25 @@ function get_nominal_states(xnom0, n_sim_steps, dt; mu = 3.986e5)
 end
 
 # relevant parameters including probability of collision covariance matrix
-function get_P(t; init = init_conds())
+function get_P(k, x; init = init_conds())
 
     # combined hard body radius (2 meters)
     HBR = 0.002 # km
 
     # get nominal positions and velocities
-    satA_pos = init.xnoms[t][Block(1)][1:3]
-    satA_vel = init.xnoms[t][Block(1)][4:6]
-    satB_pos = init.xnoms[t][Block(2)][1:3]
-    satB_vel = init.xnoms[t][Block(2)][4:6]
+    satA_pos = init.xnoms[k][Block(1)][1:3]
+    satA_vel = init.xnoms[k][Block(1)][4:6]
+    satB_pos = init.xnoms[k][Block(2)][1:3]
+    satB_vel = init.xnoms[k][Block(2)][4:6]
+    satA_pos_true = x[Block(1)][1:3]
+    satB_pos_true = x[Block(2)][1:3]
 
     # calculate miss distance (MD) vector (rho) in ECI km
-    rho_TCA_ECI = satA_pos .- satB_pos
+    rho_TCA_ECI = satA_pos_true .- satB_pos_true
 
     ##--------------------------- COMPUTE COVARIANCE --------------------------------
-    P_satA = cov_ECI(satA_pos, satA_vel, t)
-    P_satB = cov_ECI(satB_pos, satB_vel, t)
+    P_satA = cov_ECI(satA_pos, satA_vel, k*init.dt)
+    P_satB = cov_ECI(satB_pos, satB_vel, k*init.dt)
     P      = P_satA + P_satB
 
     ## -------------------- COMPUTE PROBABILITY OF COLLISION ------------------------
@@ -145,19 +147,22 @@ function get_P(t; init = init_conds())
 
     rho_2D = T * rho_TCA_ECI
     P_2D   = T * P * T'
+    println(r_rel)
 
     # TODO: this matrix ends up not being positive definite at second time step
-    # Pc_Alfriend = Pc(rho_2D, P_2D, HBR)
+    Pc_Alfriend = Pc(rho_2D, P_2D, HBR)
 
     # TODO: UPDATE THIS TO RETURN ACTUAL PROB OF COLLISION
     # ONCE THINGS ARE WORKING
 
-    return P
+    # return P
+    return Pc_Alfriend
+    # return rho_2D' * inv(P_2D) * rho_2D
 
 end
 
 # get initial states
-function get_init_states(TCA_sec)
+function get_init_states(TCA_sec; mu = 3.986e5, re = 6378.1)
 
     # TODO: MAKE IT SO THAT dt IS CHANGED IN DYNAMICS AND n_sim_steps, etc... in init_conds() 
     # ARE CHANGED TO REFLECT TCA (WANT n_sim_steps > TCA)
@@ -166,63 +171,108 @@ function get_init_states(TCA_sec)
     TCA_hours = TCA_sec/60/60
 
     # Initialize Parameters:
-    mu              = 3.986e5        # km^3/s^2
-    re              = 6378.1     # km
     arc_length_dist = 0.5   # distance along Sat A orbit between Sat A and Sat B at TCA
     TCA_days        = TCA_hours/24        # TCA in days
     TCA             = TCA_days*24*3600     # TCA in sec
 
-    # Smaller Circular orbit for Hohmann
-    a1    = re + 685           # km
-    e1    = 0.0
-    inc1  = deg2rad(98.2)    # sun synchronous orbit
-    argp1 = 0.0
-    RAAN1 = 0.0
+    # # # # # # # # # # #
+    # HOHMANN TRANSFER  #
+    # # # # # # # # # # #
 
-    # Larger circ orbit for Hohmann (Aura Spacecraft (Duncan & Long paper))
-    a2    = re + 705  # km
-    e2    = 0.0
-    inc2  = inc1    # sun synchronous orbit
-    argp2 = 0.0
-    RAAN2 = 0.0
+    # # Smaller Circular orbit for Hohmann
+    # a1    = re + 685           # km
+    # e1    = 0.0
+    # inc1  = deg2rad(98.2)    # sun synchronous orbit
+    # argp1 = 0.0
+    # RAAN1 = 0.0
 
-    # Hohmann transfer ellipse
-    a_t    = (a1 + a2)/2
-    e_t    = (a2 - a1) / (a1 + a2)
-    inc_t  = inc1
-    argp_t = 0.0
-    RAAN_t = 0.0
+    # # Larger circ orbit for Hohmann (Aura Spacecraft (Duncan & Long paper))
+    # a2    = re + 705  # km
+    # e2    = 0.0
+    # inc2  = inc1    # sun synchronous orbit
+    # argp2 = 0.0
+    # RAAN2 = 0.0
 
-    # Relative phasing for collision in TCA_days
-    # Want Sat A (circular orbit) to be an arc length of 0.5km behind sat B at TCA
-    nu_meetB = pi                   # true anomaly at TCA to ensure sat B close approach
-    offset   = arc_length_dist/a2     # central angle in radius required for assigned arc length
-    nu_meetA = pi - offset          # true anomaly at TCA to ensure sat A close approach
+    # # Hohmann transfer ellipse
+    # a_t    = (a1 + a2)/2
+    # e_t    = (a2 - a1) / (a1 + a2)
+    # inc_t  = inc1
+    # argp_t = 0.0
+    # RAAN_t = 0.0
 
-    # Calculate initial true anom for circular orbit
-    n2    = sqrt(mu / a2^3)                 # outer circular mean motion
-    nu2_0 = mod(nu_meetA - n2*TCA, 2*pi)   # required initial true anomaly for sc in larger circ orbit
+    # # Relative phasing for collision in TCA_days
+    # # Want Sat A (circular orbit) to be an arc length of 0.5km behind sat B at TCA
+    # nu_meetB = pi                   # true anomaly at TCA to ensure sat B close approach
+    # offset   = arc_length_dist/a2     # central angle in radius required for assigned arc length
+    # nu_meetA = pi - offset          # true anomaly at TCA to ensure sat A close approach
 
-    # Calculate initial true anom for elliptical transfer orbit
-    # First, must compute mean anomaly at nu_meetB on the transfer orbit
-    cosE_meet = (e_t + cos(nu_meetB)) / (1 + e_t*cos(nu_meetB))
-    E_meet    = acos(cosE_meet)
+    # # Calculate initial true anom for circular orbit
+    # n2    = sqrt(mu / a2^3)                 # outer circular mean motion
+    # nu2_0 = mod(nu_meetA - n2*TCA, 2*pi)   # required initial true anomaly for sc in larger circ orbit
 
-    # Account for fact that true anom, mean anom, and eccentric anom all in same half plane
-    if nu_meetB > pi
-        E_meet = 2*pi - E_meet
-    end
-    M_meet = E_meet - e_t*sin(E_meet)
-    nt     = sqrt(mu / a_t^3)          # elliptical transfer mean motion
+    # # Calculate initial true anom for elliptical transfer orbit
+    # # First, must compute mean anomaly at nu_meetB on the transfer orbit
+    # cosE_meet = (e_t + cos(nu_meetB)) / (1 + e_t*cos(nu_meetB))
+    # E_meet    = acos(cosE_meet)
 
-    # Back out the initial mean anomaly for transfer at t=0
-    M_t0 = M_meet - nt*TCA
-    # Convert that back to true anomaly nut_0
-    nut_0 = true_anomaly_from_mean(M_t0, e_t)
+    # # Account for fact that true anom, mean anom, and eccentric anom all in same half plane
+    # if nu_meetB > pi
+    #     E_meet = 2*pi - E_meet
+    # end
+    # M_meet = E_meet - e_t*sin(E_meet)
+    # nt     = sqrt(mu / a_t^3)          # elliptical transfer mean motion
 
-    # Get ECI states (X, Y, Z, Vx, Vy, Vz), km and km/s
-    satA_state0 = kepler2cart(a2, e2, inc2, argp2, RAAN2, nu2_0; mu=mu)
-    satB_state0 = kepler2cart(a_t, e_t, inc_t, argp_t, RAAN_t, nut_0; mu=mu)
+    # # Back out the initial mean anomaly for transfer at t=0
+    # M_t0 = M_meet - nt*TCA
+    # # Convert that back to true anomaly nut_0
+    # nut_0 = true_anomaly_from_mean(M_t0, e_t)
+
+    # # Get ECI states (X, Y, Z, Vx, Vy, Vz), km and km/s
+    # satA_state0 = kepler2cart(a2, e2, inc2, argp2, RAAN2, nu2_0; mu=mu)
+    # satB_state0 = kepler2cart(a_t, e_t, inc_t, argp_t, RAAN_t, nut_0; mu=mu)
+
+    # # # # # # # # # # # # # # # # # # # # #
+    # SAME ORBIT BUT DIFFERENT INCLINATIONS #
+    # # # # # # # # # # # # # # # # # # # # #
+
+    # Choose common circular orbit radius
+    alt = 700.0
+    a   = re + alt
+    e   = 0.0
+
+    # Different inclinations
+    # incA = deg2rad(98.2)    # Sat A
+    incA = deg2rad(109)
+    incB = deg2rad(110)    # Sat B
+
+    # Same RAAN and argument of periapsis so they intersect at line of nodes
+    RAANA = 0.0
+    RAANB = 0.0
+    argp_A = 0.0
+    argp_B = 0.0
+
+    # Choose Time of Closest Approach (collision time)
+    period = 2*pi*sqrt(a^3/mu)      # T in sec
+    period_days = period/24/3600    # T in days
+
+    # frac = 0.01667
+    # TCA_days = frac * period_days   # TCA in days
+    # TCA = frac*period               # TCA in sec
+    tspan = (0.0, TCA)
+
+    # Mean motion (same for both)
+    n = sqrt(mu / a^3)
+
+    # We want both at ascending node (ν = 0) at t = TCA
+    # So M(TCA) = 0 mod 2π → M0 = -n*TCA mod 2π
+    M0 = mod(-n * TCA, 2π)
+
+    # Convert M0 → ν0 (for e=0, ν0 ≈ M0, but we’ll use your function)
+    true_anom0 = true_anomaly_from_mean(M0, e)
+
+    # Get states in ECI
+    satA_state0 = kepler2cart(a, e, incA, argp_A, RAANA, true_anom0; mu=mu)
+    satB_state0 = kepler2cart(a, e, incB, argp_B, RAANB, true_anom0; mu=mu)
 
     # concatenate states
     x = BlockArray(vcat(satA_state0, satB_state0), [6, 6])

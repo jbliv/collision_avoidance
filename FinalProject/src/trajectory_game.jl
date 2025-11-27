@@ -8,15 +8,15 @@ function setup_trajectory_game(; init = init_conds(), environment = nothing)
 
     # locally define cost for each player
     cost = let
-        function stage_cost(x, u, t, θ)
+        function stage_cost(x, u, k, θ)
             x1, x2       = blocks(x)
             u1, u2       = blocks(u)
-            x1nom, x2nom = blocks(init.xnoms[t])
+            x1nom, x2nom = blocks(init.xnoms[k])
 
             # cost for player 1 and player 2
             [
-                (x1-x1nom)'*init.Q1*(x1-x1nom), # + u1'*init.R1*u1,
-                (x2-x2nom)'*init.Q2*(x2-x2nom), #+ u2'*init.R2*u2,
+                (x1-x1nom)'*init.Q1*(x1-x1nom) + u1'*init.R1*u1,
+                (x2-x2nom)'*init.Q2*(x2-x2nom) + u2'*init.R2*u2,
             ]
         end
 
@@ -32,16 +32,20 @@ function setup_trajectory_game(; init = init_conds(), environment = nothing)
     function coupling_constraints(xs, us, θ)
 
         # get collision avoidance constraint for each time (as a vector)
-        mapreduce(vcat, enumerate(xs)) do (t, x)
+        mapreduce(vcat, enumerate(xs)) do (k, x)
 
             # TODO: UPDATE THIS WITH CORRECT COLLISION AVOIDANCE CONSTRAINT!!!
 
             # get conjunction covariance
             x1, x2 = blocks(x)
-            P_2D   = get_P(t)
+            # Pc     = get_P(k, x)
+            # TEMPORARY
+            Pc     = get_P(k, init.xnoms[k])
 
             # nonlinear collision avoidance constraint goes here
-            (x2[1:3] - x1[1:3])' * P_2D * (x2[1:3] - x1[1:3]) - 0
+            # (x2[1:3] - x1[1:3])' * Pc * (x2[1:3] - x1[1:3]) - 1e-2
+            # 1e-4 - Pc
+            (x2[1:3] - x1[1:3])' * (x2[1:3] - x1[1:3]) - 1
 
         end
     end

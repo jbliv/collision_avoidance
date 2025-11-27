@@ -47,3 +47,11 @@ plot3d(xnomA_x, xnomA_y, xnomA_z, label="Sat A", lw=2)
 plot!(xnomB_x, xnomB_y, xnomB_z, label="Sat B", lw=2)
 savefig("nomtrajectory3D.png")
 
+# get control input
+u_norm = [sqrt(u[1]^2 + u[2]^2 + u[3]^2) for u in us]
+println(sum(u_norm) / length(u_norm))
+u_norm = cumsum(u_norm)
+ts     = 1:length(us)
+plot(ts, u_norm, lw=2)
+savefig("control.png")
+
