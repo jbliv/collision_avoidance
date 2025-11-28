@@ -46,24 +46,9 @@ function solve_sqp(traj, i, init)
 
     num_vars = Int((init.num_states+init.num_control)/2)*init.horizon
 
-    # TEMPORARY
     @variable(model, τi[1:Int((init.num_states+init.num_control)/2)*init.horizon])
-    # @variable(model, τi[1:Int((init.num_states+init.num_control))*init.horizon])
-    # τ       = Vector{Any}(undef, init.num_players * num_vars)
-    # τ       = Vector{VariableRef}(undef, init.num_players * num_vars)
 
     τ_fixed = pack_trajectory(traj)
-
-    # for j = 1:init.num_players
-    #     inds = (j-1)*num_vars+1:j*num_vars
-    #     if j == i
-    #         τ[inds] = τi
-    #     else
-    #         # τ[inds] = τi[inds]
-    #         τ[inds] = τ_fixed[inds]
-    #     end
-    #     # UPDATE IT LIKE BELOW
-    # end
 
     τ = Vector{BlockArray}(undef, init.num_players*num_vars)
     if i == 1
@@ -94,6 +79,7 @@ function solve_sqp(traj, i, init)
         end
     end
 
+    # collision avoidance constraints
     for k = 2:init.horizon
         h = get_collision_constraints(xs, k, init)
         @NLconstraint(model, h >= 0)
@@ -136,6 +122,7 @@ function get_collision_constraints(xs, k, init)
     r1 = xs[k][Block(1)][1:3]
     r2 = xs[k][Block(2)][1:3]
 
+    # h = (r2 - r1)' * (r2 - r1) - 1e-2 works well
     h = (r2 - r1)' * (r2 - r1) - 1e-2
 
 end

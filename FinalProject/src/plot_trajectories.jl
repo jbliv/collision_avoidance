@@ -51,7 +51,7 @@ savefig("nomtrajectory3D.png")
 # get control input
 u_norm = [sqrt(u[Block(1)][1]^2 + u[Block(1)][2]^2 + u[Block(1)][3]^2) for u in us]
 println(sum(u_norm) / length(u_norm))
-u_norm = cumsum(u_norm)
+# u_norm = cumsum(u_norm)
 ts     = 1:length(us)
 plot(ts, u_norm, lw=2)
 savefig("control.png")

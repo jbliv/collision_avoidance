@@ -39,7 +39,7 @@ function init_conds()
     # initial true and nominal states
     dt          = 1
     turn_length = 3
-    horizon     = 15
+    horizon     = 20
     n_sim_steps = horizon
     TCA_sec     = 10
     num_players = 2
