@@ -37,13 +37,13 @@ end
 function init_conds()
 
     # initial true and nominal states
-    dt          = 1
+    dt          = 0.1 # dt = 1 worked
     turn_length = 3
-    horizon     = 20
+    horizon     = 200 # horizon = 20 worked
     n_sim_steps = horizon
     TCA_sec     = 10
     num_players = 2
-    x           = get_init_states(TCA_sec) # BlockArray(zeros(12), [6, 6])
+    x           = get_init_states(TCA_sec)
     num_control = 6
 
     # NOTE: for now, the initial nominal and true states of the satellites
@@ -147,17 +147,21 @@ function get_P(k, x; init = init_conds())
 
     rho_2D = T * rho_TCA_ECI
     P_2D   = T * P * T'
-    # println(r_rel)
 
-    # TODO: this matrix ends up not being positive definite at second time step
-    Pc_Alfriend = Pc(rho_2D, P_2D, HBR)
+    # Pc_Alfriend = Pc(rho_2D, P_2D, HBR)
 
-    # TODO: UPDATE THIS TO RETURN ACTUAL PROB OF COLLISION
-    # ONCE THINGS ARE WORKING
+    # # # # # # # # # # # # # # # # #
+    # Logic for h constraint below  #
+    # # # # # # # # # # # # # # # # #
 
-    # return P
-    return Pc_Alfriend
-    # return rho_2D' * inv(P_2D) * rho_2D
+    # Pc < 1e-4
+    # exponent < ln(1e-4 * 2 * sqrt(detP) / (HBR^2))
+    # rho' * P_inv * rho > -2 * ln(1e-4 * 2 * sqrt(detP) / (HBR^2))
+
+    P_2D_inv = inv(P_2D)
+    h = 2 * log(1e-4 * 2 * sqrt(det(P_2D)) / (HBR^2)) + rho_2D' * P_2D_inv * rho_2D
+
+    return h
 
 end
 
@@ -241,8 +245,8 @@ function get_init_states(TCA_sec; mu = 3.986e5, re = 6378.1)
     e   = 0.0
 
     # Different inclinations
-    # incA = deg2rad(98.2)    # Sat A
-    incA = deg2rad(109)
+    incA = deg2rad(98.2)    # Sat A
+    # incA = deg2rad(109)
     incB = deg2rad(110)    # Sat B
 
     # Same RAAN and argument of periapsis so they intersect at line of nodes

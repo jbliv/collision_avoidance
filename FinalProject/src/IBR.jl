@@ -19,9 +19,6 @@ function iterative_best_response(init; max_iters::Int=1, tol::Float64=1e-2)
 
         end
 
-        println("here")
-        println(iter)
-
         # # check if converged
         # dx = norm(pack_trajectory(traj) - pack_trajectory(traj_old))
         # println(dx)
@@ -123,8 +120,10 @@ function get_collision_constraints(xs, k, init)
     r2 = xs[k][Block(2)][1:3]
 
     # h = (r2 - r1)' * (r2 - r1) - 1e-2 works well
-    h = (r2 - r1)' * (r2 - r1) - 1e-2
-
+    # P = get_P(k, xs[k]; init=init)
+    # h = (r2 - r1)' * P * (r2 - r1) - 1e7
+    h = get_P(k, xs[k]; init=init)
+    
 end
 
 # objective function
