@@ -1,13 +1,12 @@
 
 
-function iterative_best_response(init; max_iters::Int=20, tol::Float64=1e-2)
+function iterative_best_response(init; max_iters::Int=1, tol::Float64=1e-2)
 
     # use the nominal trajectory as the initial guess
     traj = get_initial_trajectories(init)
 
     # loop until converge to solution or reach maximum # of iterations
     for iter = 1:max_iters
-        println("here")
 
         # store old state
         traj_old = deepcopy(traj)
@@ -16,15 +15,16 @@ function iterative_best_response(init; max_iters::Int=20, tol::Float64=1e-2)
         for i = 1:init.num_players
 
             # solve using SQP solver
-            println("here")
             traj = solve_sqp(traj, i, init)
 
         end
 
         println("here")
+        println(iter)
 
-        # check if converged
+        # # check if converged
         # dx = norm(pack_trajectory(traj) - pack_trajectory(traj_old))
+        # println(dx)
 
         # if dx < tol
         #     break
@@ -86,12 +86,17 @@ function solve_sqp(traj, i, init)
         @NLconstraint(model, xs[1][Block(i)][ix] - init.x[Block(i)][ix] == 0)
     end
 
-    # nonlinear dynamic constraints
+    # linearized dynamic constraints
     for k = 2:init.horizon
         g = get_dynamics_constraints(xs, us, k, i, init)
         for ix = 1:Int(init.num_states/2)
             @NLconstraint(model, g[ix] == 0)
         end
+    end
+
+    for k = 2:init.horizon
+        h = get_collision_constraints(xs, k, init)
+        @NLconstraint(model, h >= 0)
     end
 
     optimize!(model)
@@ -122,6 +127,16 @@ function get_dynamics_constraints(xs, us, k, i, init)
     uim1 = us[k-1][Block(i)]
 
     g = xi - integrate(xim1, uim1, k, i, init)
+
+end
+
+# collision constraint function
+function get_collision_constraints(xs, k, init)
+
+    r1 = xs[k][Block(1)][1:3]
+    r2 = xs[k][Block(2)][1:3]
+
+    h = (r2 - r1)' * (r2 - r1) - 1e-2
 
 end
 
