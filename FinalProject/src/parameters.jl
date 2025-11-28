@@ -37,11 +37,11 @@ end
 function init_conds()
 
     # initial true and nominal states
-    dt          = 0.1
+    dt          = 1
     turn_length = 3
-    horizon     = 10
-    n_sim_steps = 400
-    TCA_sec     = 5
+    horizon     = 15
+    n_sim_steps = horizon
+    TCA_sec     = 10
     num_players = 2
     x           = get_init_states(TCA_sec) # BlockArray(zeros(12), [6, 6])
     num_control = 6
@@ -54,10 +54,10 @@ function init_conds()
     xnoms = get_nominal_states(xnom0, n_sim_steps, dt)
 
     # Q, R weights
-    Q1 = I(6)
-    Q2 = I(6)
-    R1 = 0.001*I(3)
-    R2 = 0.001*I(3)
+    Q1 = 100*I(6)
+    Q2 = 100*I(6)
+    R1 = 1*I(3)
+    R2 = 1*I(3)
 
     init = Init(x,
                 xnoms,

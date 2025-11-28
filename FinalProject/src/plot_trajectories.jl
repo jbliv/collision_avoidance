@@ -1,22 +1,23 @@
 
 using Plots
 using BlockArrays
+using JuMP
 
 # run collision avoidance scenario
 traj = FinalProject.run()
 
 # get states and control inputs
-xs = traj.xs
-us = traj.us
+xs = value.(traj.xs)
+us = value.(traj.us)
 
 # get x-, y-, and z-coordinates for both satellites over time
-xA_x = [x[1] for x in xs]
-xA_y = [x[2] for x in xs]
-xA_z = [x[3] for x in xs]
+xA_x = [x[Block(1)][1] for x in xs]
+xA_y = [x[Block(1)][2] for x in xs]
+xA_z = [x[Block(1)][3] for x in xs]
 
-xB_x = [x[7] for x in xs]
-xB_y = [x[8] for x in xs]
-xB_z = [x[9] for x in xs]
+xB_x = [x[Block(2)][1] for x in xs]
+xB_y = [x[Block(2)][2] for x in xs]
+xB_z = [x[Block(2)][3] for x in xs]
 
 plot(xA_x, xA_y, label="Sat A", lw=2, xlabel="X-Position [km]", ylabel="Y-Position[km]")
 plot!(xB_x, xB_y, label="Sat B", lw=2, xlabel="X-Position [km]", ylabel="Y-Position[km]")
@@ -48,7 +49,7 @@ plot!(xnomB_x, xnomB_y, xnomB_z, label="Sat B", lw=2)
 savefig("nomtrajectory3D.png")
 
 # get control input
-u_norm = [sqrt(u[1]^2 + u[2]^2 + u[3]^2) for u in us]
+u_norm = [sqrt(u[Block(1)][1]^2 + u[Block(1)][2]^2 + u[Block(1)][3]^2) for u in us]
 println(sum(u_norm) / length(u_norm))
 u_norm = cumsum(u_norm)
 ts     = 1:length(us)
