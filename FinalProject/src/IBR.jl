@@ -36,9 +36,11 @@ end
 function solve_sqp(traj, i, init)
 
     # define model
+    println("Creating model for player $i")
     model = Model(optimizer_with_attributes(
         SqpSolver.Optimizer, 
-        "external_optimizer" => Ipopt.Optimizer,
+        "external_optimizer" => optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0),
+        "OutputFlag" => 0,
     ))
 
     num_vars = Int((init.num_states+init.num_control)/2)*init.horizon
