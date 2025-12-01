@@ -17,11 +17,16 @@ end
 
 function integrate(x, u, k, i, init; mu = 3.986e5)
 
-    # nominal position
-    r    = init.xnoms[k][Block(i)][1:3]
+    # Note: when I expanded the simulation length I noticed a massive control spike at the beginning. I figured the dynamics could be causing it
+    # the changes here fixed it
+
+    xnom_prev = init.xnoms[k-1][Block(i)]
+    xnom_curr = init.xnoms[k][Block(i)]
+
+    r    = xnom_prev[1:3]
     rmag = norm(r)
 
-    # linear dynamics
+    # linear dynamics (Jacobian at k-1)
     Ad = I(6) + init.dt * [
             zeros(3,3)                    I(3)
             (-mu/rmag^3*I(3) + 3*mu*(r*r')/rmag^5)  zeros(3,3)
@@ -29,18 +34,7 @@ function integrate(x, u, k, i, init; mu = 3.986e5)
 
     Bd = init.dt * [zeros(3,3); I(3)]
 
-    return Ad * x + Bd * u
-
-    # forward Euler
-    # return x + init.dt * dynamics(x, u)
-
-    # runge-kutta
-    # k1 = dynamics(x, u)
-    # k2 = dynamics(x + 0.5*dt*k1, u)
-    # k3 = dynamics(x + 0.5*dt*k2, u)
-    # k4 = dynamics(x + dt*k3, u)
-
-    # return x + (dt/6) * (k1 + 2*k2 + 2*k3 + k4)
+    return xnom_curr + Ad * (x - xnom_prev) + Bd * u
 
 end
 

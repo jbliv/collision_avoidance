@@ -1,12 +1,14 @@
 
 
-function iterative_best_response(init; max_iters::Int=1, tol::Float64=1e-2)
+function iterative_best_response(init; max_iters::Int=10, tol::Float64=1e-3)
 
     # use the nominal trajectory as the initial guess
     traj = get_initial_trajectories(init)
 
     # loop until converge to solution or reach maximum # of iterations
     for iter = 1:max_iters
+
+        println("Starting IBR iteration $iter")
 
         # store old state
         traj_old = deepcopy(traj)
@@ -82,6 +84,13 @@ function solve_sqp(traj, i, init)
     for k = 2:init.horizon
         h = get_collision_constraints(xs, k, init)
         @NLconstraint(model, h >= 0)
+    end
+
+    # control constraints
+    u_max_sq = init.u_max^2
+    for k = 1:init.horizon
+        u_vec = us[k][Block(i)]
+        @NLconstraint(model, sum(u_vec[j]^2 for j in 1:3) <= u_max_sq)
     end
 
     optimize!(model)

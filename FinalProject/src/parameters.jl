@@ -31,17 +31,20 @@ mutable struct Init
     R1::Matrix{Float64}
     R2::Matrix{Float64}
 
+    # max control input
+    u_max::Float64
+
 end
 
 # initial conditions
 function init_conds()
 
     # initial true and nominal states
-    dt          = 0.1 # dt = 1 worked
+    dt          = 10.0 # dt = 1 worked
     turn_length = 3
     horizon     = 200 # horizon = 20 worked
     n_sim_steps = horizon
-    TCA_sec     = 10
+    TCA_sec     = 1000
     num_players = 2
     x           = get_init_states(TCA_sec)
     num_control = 6
@@ -54,10 +57,14 @@ function init_conds()
     xnoms = get_nominal_states(xnom0, n_sim_steps, dt)
 
     # Q, R weights
-    Q1 = 100*I(6)
-    Q2 = 100*I(6)
-    R1 = 1*I(3)
-    R2 = 1*I(3)
+    Q1 = 0.1*I(6)
+    Q2 = 0.1*I(6)
+    R1 = 1e7*I(3)
+    R2 = 1e7*I(3)
+
+    # max control input
+    u_max = 1e2
+
 
     init = Init(x,
                 xnoms,
@@ -72,7 +79,8 @@ function init_conds()
                 Q1,
                 Q2,
                 R1,
-                R2)
+                R2,
+                u_max)
 
     return init
 

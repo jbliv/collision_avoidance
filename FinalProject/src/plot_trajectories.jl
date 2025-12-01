@@ -60,10 +60,11 @@ dt = init.dt
 to_mps = 1000.0 * dt
 
 u_norm = [sqrt(u[Block(1)][1]^2 + u[Block(1)][2]^2 + u[Block(1)][3]^2) * to_mps for u in us]
-println("Total Delta V (Sat A): $(sum(u_norm)) m/s")
+total_dv = sum(u_norm)
+println("Total Delta V (Sat A): $(total_dv) m/s")
 # u_norm = cumsum(u_norm)
 ts     = 1:length(us)
-p5 = plot(ts, u_norm, lw=2, label="Sat A", xlabel="Time Step", ylabel="Delta V [m/s]")
+p5 = plot(ts, u_norm, lw=2, label="Sat A (Total dV: $(round(total_dv, digits=4)) m/s)", xlabel="Time Step", ylabel="Delta V [m/s]")
 savefig(p5, "control.png")
 
 # plot separation distance
@@ -122,7 +123,7 @@ p_ctrl_3 = plot(ts, [uA_z uB_z], label=["Sat A" "Sat B"], ylabel="dV_z [m/s]", l
 p8 = plot(p_ctrl_1, p_ctrl_2, p_ctrl_3, layout=(3, 1), size=(800, 900), xlabel="Time Step")
 savefig(p8, "detailed_control.png")
 
-# 3D plot with Earth wireframe, (from ChatGPT scale is a bit off and doesn't show much of the orbit TODO: fix)
+# 3D plot with Earth wireframe, (from ChatGPT)
 function sphere(r, n=20)
     u = range(0, 2π, length=n)
     v = range(0, π, length=n)
@@ -160,4 +161,13 @@ end
 plot!(p9, camera=(45, 30))
 
 savefig(p9, "trajectory3D_earth.png")
+
+# plot deviation from nominal trajectory
+
+devA = [norm(x[Block(1)][1:3] - xnom[Block(1)][1:3]) for (x, xnom) in zip(xs, xnoms)]
+devB = [norm(x[Block(2)][1:3] - xnom[Block(2)][1:3]) for (x, xnom) in zip(xs, xnoms)]
+
+p10 = plot(ts, devA, label="Sat A Deviation", lw=2, xlabel="Time Step", ylabel="Deviation [km]")
+plot!(p10, ts, devB, label="Sat B Deviation", lw=2, linestyle=:dash)
+savefig(p10, "deviation_from_nominal.png")
 
